@@ -2,13 +2,12 @@
 
 public enum Precedence
 {
-    Lowest,
-    Equals,
-    LessGreater,
-    Sum,
-    Product,
-    Prefix,
-    Call,
+    Lowest = 0,
+    Equals = 2,
+    Comparison = 3,
+    Sum = 4,
+    Product = 5,
+    Prefix = 6,
 }
 
 public class Parser
@@ -26,6 +25,17 @@ public class Parser
         _tokens = tokens;
         RegisterPrefix(TokenType.Ident, new IdentifierParser());
         RegisterPrefix(TokenType.Int, new IntegerLiteralParser());
+        RegisterPrefix(TokenType.Bang, new PrefixExpressionParser());
+        RegisterPrefix(TokenType.Minus, new PrefixExpressionParser());
+        
+        RegisterInfix(TokenType.Plus, new InfixExpressionParser(Precedence.Sum));
+        RegisterInfix(TokenType.Minus, new InfixExpressionParser(Precedence.Sum));
+        RegisterInfix(TokenType.Slash, new InfixExpressionParser(Precedence.Product));
+        RegisterInfix(TokenType.Asterisk, new InfixExpressionParser(Precedence.Product));
+        RegisterInfix(TokenType.Eq, new InfixExpressionParser(Precedence.Equals));
+        RegisterInfix(TokenType.NotEq, new InfixExpressionParser(Precedence.Equals));
+        RegisterInfix(TokenType.Lt, new InfixExpressionParser(Precedence.Comparison));
+        RegisterInfix(TokenType.Gt, new InfixExpressionParser(Precedence.Comparison));
         
         NextToken();
         NextToken();
@@ -78,9 +88,28 @@ public class Parser
         if (prefixParser == null)
         {
             Errors.Add("Couldn't find Prefix Parser for " + _curToken.TokenType);
+            return null;
         }
-        
-        return prefixParser?.Parse(this, _curToken);
+
+        IExpression? left = prefixParser.Parse(this, _curToken);
+        if (left == null)
+        {
+            return null;
+        }
+
+        while (_peekToken.TokenType != TokenType.Semicolon && precedence < PeekPrecedence())
+        {
+            _infixParsers.TryGetValue(_peekToken.TokenType, out var infixParser);
+            if (infixParser == null)
+            {
+                return left;
+            }
+            NextToken();
+
+            left = infixParser.Parse(this, left, _curToken);
+        }
+
+        return left;
     }
     
     private ReturnStatement ParseReturnStatement()
@@ -151,6 +180,16 @@ public class Parser
         _infixParsers.Add(tokenType, infixParser);
     }
     
+    private Precedence PeekPrecedence()
+    {
+        if (!_infixParsers.ContainsKey(_peekToken.TokenType))
+        {
+            return Precedence.Lowest;
+        }
+        IInfixParser parslet = _infixParsers[_peekToken.TokenType];
+        return parslet.Precedence;
+    }
+    
     private interface IPrefixParser
     {
         IExpression? Parse(Parser parser, Token token);
@@ -158,7 +197,28 @@ public class Parser
 
     private interface IInfixParser
     {
-        IExpression Parse(Parser parser, IExpression function, Token token);
+        public Precedence Precedence { get; } 
+        IExpression? Parse(Parser parser, IExpression? left, Token token);
+    }
+    
+    private class InfixExpressionParser(Precedence precedence) : IInfixParser
+    {
+        public Precedence Precedence { get; } = precedence;
+
+        public IExpression? Parse(Parser parser, IExpression? left, Token token)
+        {
+            InfixExpression expression = new InfixExpression(token, token.Literal, left);
+
+            parser.NextToken();
+            IExpression? right = parser.ParseExpression(Precedence);
+            if (right == null)
+            {
+                return null;
+            }
+            
+            expression.Right = right;
+            return expression;
+        }
     }
     
     private class IdentifierParser : IPrefixParser
@@ -180,6 +240,24 @@ public class Parser
 
             literal.Value = tmp;
             return literal;
+        }
+    }
+    
+    private class PrefixExpressionParser : IPrefixParser
+    {
+        public IExpression? Parse(Parser parser, Token token)
+        {
+            PrefixExpression prefixExpression = new PrefixExpression(token, token.Literal);
+            parser.NextToken();
+
+            IExpression? expression = parser.ParseExpression(Precedence.Prefix);
+            if (expression == null)
+            {
+                return null;
+            }
+
+            prefixExpression.Right = expression;
+            return prefixExpression;
         }
     }
 }

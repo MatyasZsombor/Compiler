@@ -1,4 +1,6 @@
-﻿namespace BetterInterpreter;
+﻿using System.Linq.Expressions;
+
+namespace BetterInterpreter;
 
 public interface INode
 {
@@ -37,6 +39,27 @@ public class IntegerLiteral(Token token, int value = 0) : IExpression
     
     public string TokenLiteral() => Token.Literal;
     public override string ToString() => Value.ToString();
+}
+
+public class PrefixExpression(Token token, string @operator, IExpression right = null!) : IExpression
+{
+    private Token Token { get; } = token;
+    public string Operator { get; }= @operator;
+    public IExpression Right { get; set; } = right;
+
+    public string TokenLiteral() => Token.Literal;
+    public override string ToString() => "(" + Operator + Right + ")";
+}
+
+public class InfixExpression(Token token, string @operator, IExpression? left, IExpression right = null!) : IExpression
+{
+    private Token Token { get; } = token;
+    public string Operator { get; } = @operator;
+    public IExpression? Left { get;}= left;
+    public IExpression Right { get; set; }= right;
+    
+    public string TokenLiteral() => Token.Literal;
+    public override string ToString() => "(" + Left  + " " + Operator + " " + Right + ")";
 }
 
 public class DeclarationStatement(Token token, Identifier name, IExpression value = null!) : IStatement

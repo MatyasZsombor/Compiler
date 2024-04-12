@@ -71,6 +71,71 @@ public class ParserTests
         Assert.Equal(5, identifier.Value);
         Assert.Equal("5", identifier.TokenLiteral());
     }
+    
+    [Fact]
+    private void Test4()
+    {
+        _lexer = new Lexer("!5;\n-15;");
+        _parser = new Parser(_lexer.LexedTokens);
+
+        ProgramNode programNode = _parser.ParseProgram();
+        
+        Assert.Equal(2,programNode.Statements.Count());
+        Assert.Empty(_parser.Errors);
+        
+        Assert.Equal(typeof(ExpressionStatement), programNode.Statements[0].GetType());
+        ExpressionStatement statement = (ExpressionStatement) programNode.Statements[0];
+        
+        Assert.Equal(typeof(PrefixExpression), statement.Expression.GetType());
+        PrefixExpression prefixExpression = (PrefixExpression) statement.Expression;
+        
+        Assert.Equal("!", prefixExpression.TokenLiteral());
+        Assert.Equal("!", prefixExpression.Operator);
+        Assert.Equal("(!5)", prefixExpression.ToString());
+        
+        Assert.Equal(typeof(ExpressionStatement), programNode.Statements[1].GetType());
+        ExpressionStatement statement2 = (ExpressionStatement) programNode.Statements[1];
+        
+        Assert.Equal(typeof(PrefixExpression), statement2.Expression.GetType());
+        PrefixExpression prefixExpression2 = (PrefixExpression) statement2.Expression;
+        
+        Assert.Equal("-", prefixExpression2.TokenLiteral());
+        Assert.Equal("-", prefixExpression2.Operator);
+        Assert.Equal("(-15)", prefixExpression2.ToString());
+    }
+
+    [Fact]
+    private void Test5()
+    {
+        List<(string input, string expected)> tests = 
+        [
+            ("-a * b;", "((-a) * b)"),
+            ("!-a;", "(!(-a))"),
+            ("a + b + c;", "((a + b) + c)"),
+            ("a + b - c;", "((a + b) - c)"),
+            ("a * b * c;", "((a * b) * c)"),
+            ("a * b * c;", "((a * b) * c)"),
+            ("a + b / c;", "(a + (b / c))"),
+            ("a + b * c + d / e - f;", "(((a + (b * c)) + (d / e)) - f)"),
+            ("3 + 4; -5 * 5;", "(3 + 4)((-5) * 5)"),
+            ("5 > 4 == 3 < 4;", "((5 > 4) == (3 < 4))"),
+            ("5 < 4 != 3 > 4;", "((5 < 4) != (3 > 4))"),
+            ("3 + 4 * 5 == 3 * 1 + 4 * 5;", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
+            ("3 + 4 * 5 == 3 * 1 + 4 * 5;", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))")
+        ];
+
+        foreach (var test in tests)
+        {
+            _lexer = new Lexer(test.input);
+            _parser = new Parser(_lexer.LexedTokens);
+
+            ProgramNode programNode = _parser.ParseProgram();
+            
+            Assert.Empty(_parser.Errors);
+            
+            Assert.Equal(test.expected, programNode.ToString());
+        }
+    }
 
     private static bool TestDeclaration(INode node, string type, string name)
     {
