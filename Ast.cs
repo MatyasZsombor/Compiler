@@ -1,6 +1,4 @@
-﻿using System.Linq.Expressions;
-
-namespace BetterInterpreter;
+﻿namespace Compiler;
 
 public interface INode
 {

@@ -1,5 +1,5 @@
 namespace UnitTests;
-using BetterInterpreter;
+using Compiler;
 
 public class LexerTest
 {

@@ -1,4 +1,4 @@
-﻿using BetterInterpreter;
+﻿using Compiler;
 
 namespace UnitTests;
 

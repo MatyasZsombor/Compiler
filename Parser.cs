@@ -1,4 +1,4 @@
-﻿namespace BetterInterpreter;
+﻿namespace Compiler;
 
 public enum Precedence
 {

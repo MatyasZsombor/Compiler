@@ -1,4 +1,4 @@
-﻿namespace BetterInterpreter;
+﻿namespace Compiler;
 
 public class Lexer
 {
@@ -72,7 +72,7 @@ public class Lexer
                     token = new Token(TokenType.PrefixMinus, tmp + _cur);
                     break;
                 }
-                token = new Token(TokenType.Plus, _cur);
+                token = new Token(TokenType.Minus, _cur);
                 break;
             case "!":
                 if (PeekChar() == '=')
