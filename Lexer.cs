@@ -22,7 +22,7 @@ public class Lexer
 
     public Lexer(string input)
     {
-        _input = input;
+        _input = input + "\0";
         ReadChar();
         
         Token token = NextToken();
@@ -55,10 +55,24 @@ public class Lexer
                 token = new Token(TokenType.Assign, _cur);
                 break;
             case "+":
+                if (PeekChar() == '+')
+                {
+                    string tmp = _cur;
+                    ReadChar();
+                    token = new Token(TokenType.PrefixPlus, tmp + _cur);
+                    break;
+                }
                 token = new Token(TokenType.Plus, _cur);
                 break;
             case "-":
-                token = new Token(TokenType.Minus, _cur);
+                if (PeekChar() == '-')
+                {
+                    string tmp = _cur;
+                    ReadChar();
+                    token = new Token(TokenType.PrefixMinus, tmp + _cur);
+                    break;
+                }
+                token = new Token(TokenType.Plus, _cur);
                 break;
             case "!":
                 if (PeekChar() == '=')

@@ -16,13 +16,31 @@ internal static class Program
         }
         
         string[] lines = File.ReadAllLines(args[0]);
-        List<string> tmp = lines.ToList();
-        tmp.Add("\0");
-        lines = tmp.ToArray();
         
         Lexer lexer = new Lexer(string.Join("\n", lines));
         Parser parser = new Parser(lexer.LexedTokens);
         ProgramNode node = parser.ParseProgram();
+
+        if (parser.Errors.Count != 0)
+        {
+            foreach (string error in parser.Errors)
+            {
+                Console.WriteLine(error);
+            }
+            return;
+        }
+
+        SyntaxChecker syntaxChecker = new SyntaxChecker(node);
+
+        if (syntaxChecker.Errors.Count != 0)
+        {
+            foreach (string error in syntaxChecker.Errors)
+            {
+                Console.WriteLine(error);
+            }
+            return;
+        }
+        
         Console.WriteLine("Finished");
     }
 }
