@@ -41,6 +41,15 @@ public class IntegerLiteral(Token token, int value = 0) : IExpression
     public override string ToString() => Value.ToString();
 }
 
+public class BoolLiteral(Token token, bool value) : IExpression
+{
+    private Token Token { get; } = token;
+    public bool Value { get; } = value;
+
+    public string TokenLiteral() => Token.Literal;
+    public override string ToString() => Token.Literal;
+}
+
 public class PrefixExpression(Token token, string @operator, IExpression right = null!) : IExpression
 {
     private Token Token { get; } = token;
@@ -66,7 +75,7 @@ public class DeclarationStatement(Token token, Identifier name, IExpression valu
 {
     private Token Token { get; } = token;
     public Identifier Name { get; } = name;
-    public IExpression Value { get; } = value;
+    public IExpression Value { get; set; } = value;
     
     public string TokenLiteral() => Token.Literal;
     
@@ -77,7 +86,7 @@ public class DeclarationStatement(Token token, Identifier name, IExpression valu
 public class ReturnStatement(Token token, IExpression returnValue = null!) : IStatement
 {
     private Token Token { get; } = token;
-    public IExpression ReturnValue { get; } = returnValue;
+    public IExpression ReturnValue { get; set; } = returnValue;
     public string TokenLiteral() => Token.Literal;
     public override string ToString() => TokenLiteral() + " " + ReturnValue.ToString() + ";";
 }

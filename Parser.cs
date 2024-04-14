@@ -27,6 +27,9 @@ public class Parser
         RegisterPrefix(TokenType.Int, new IntegerLiteralParser());
         RegisterPrefix(TokenType.Bang, new PrefixExpressionParser());
         RegisterPrefix(TokenType.Minus, new PrefixExpressionParser());
+        RegisterPrefix(TokenType.True, new BoolLiteralParser());
+        RegisterPrefix(TokenType.False, new BoolLiteralParser());
+        RegisterPrefix(TokenType.Lparen, new GroupedExpressionParser());
         
         RegisterInfix(TokenType.Plus, new InfixExpressionParser(Precedence.Sum));
         RegisterInfix(TokenType.Minus, new InfixExpressionParser(Precedence.Sum));
@@ -45,7 +48,7 @@ public class Parser
     {
         ProgramNode programNode = new ProgramNode();
 
-        while (_peekToken.TokenType != TokenType.Eof)
+        while (_curToken.TokenType != TokenType.Eof)
         {
             IStatement? statement = ParseStatement();
             if (statement != null)
@@ -75,10 +78,7 @@ public class Parser
         }
         ExpressionStatement statement = new ExpressionStatement(_curToken, parsed);
 
-        if (_peekToken.TokenType == TokenType.Semicolon)
-        {
-            NextToken();
-        }
+        ExpectPeek(TokenType.Semicolon);
         return statement;
     }
 
@@ -112,39 +112,49 @@ public class Parser
         return left;
     }
     
-    private ReturnStatement ParseReturnStatement()
+    private ReturnStatement? ParseReturnStatement()
     {
-        Token tmp = _curToken;
+        ReturnStatement statement = new ReturnStatement(_curToken);
         NextToken();
 
-        while (_curToken.TokenType != TokenType.Semicolon)
-        {
-            NextToken();
-        }
-        return new ReturnStatement(tmp);
-    }
-    
-    private DeclarationStatement? ParseDeclaration()
-    {
-        Token tmp = _curToken;
-        if (!ExpectPeek(TokenType.Ident))
+        IExpression? tmp = ParseExpression(Precedence.Lowest);
+        ExpectPeek(TokenType.Semicolon);
+
+        if (tmp == null)
         {
             return null;
         }
 
-        Identifier name = new Identifier(_curToken, _curToken.Literal);
+        statement.ReturnValue = tmp;
+        
+        return statement;
+    }
+    
+    private DeclarationStatement? ParseDeclaration()
+    {
+        Token tmpToken = _curToken;
+        if (!ExpectPeek(TokenType.Ident))
+        {
+            return null;
+        }
+        
+        DeclarationStatement statement = new(tmpToken,new Identifier(_curToken, _curToken.Literal));
 
         if (!ExpectPeek(TokenType.Assign))
         {
             return null;
         }
-
-        while (_curToken.TokenType != TokenType.Semicolon)
+        NextToken();
+        IExpression? tmp = ParseExpression(Precedence.Lowest);
+        ExpectPeek(TokenType.Semicolon);
+        
+        if (tmp == null)
         {
-            NextToken();
+            return null;
         }
 
-        return new DeclarationStatement(tmp, name);
+        statement.Value = tmp;
+        return statement;
     }
 
 
@@ -240,6 +250,24 @@ public class Parser
 
             literal.Value = tmp;
             return literal;
+        }
+    }
+    
+    private class BoolLiteralParser : IPrefixParser
+    {
+        public IExpression Parse(Parser parser, Token token) =>
+            new BoolLiteral(parser._curToken, parser._curToken.Literal == "true");
+    }
+
+    private class GroupedExpressionParser : IPrefixParser
+    {
+        public IExpression? Parse(Parser parser, Token token)
+        {
+            parser.NextToken();
+
+            IExpression? expression = parser.ParseExpression(Precedence.Lowest);
+
+            return parser.ExpectPeek(TokenType.Rparen) ? expression : null;
         }
     }
     

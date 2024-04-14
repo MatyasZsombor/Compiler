@@ -6,11 +6,11 @@ public class Lexer
     {
         {"int", TokenType.Type},
         {"bool", TokenType.Type},
+        {"true", TokenType.True},
+        {"false", TokenType.False},
         {"if", TokenType.If},
         {"else", TokenType.Else},
         {"return", TokenType.Return},
-        {"true", TokenType.True},
-        {"false", TokenType.False}
     };
 
     public readonly List<Token> LexedTokens = [];
@@ -100,7 +100,7 @@ public class Lexer
             case "}":
                 token = new Token(TokenType.Rbrace, _cur);
                 break;
-            case "0":
+            case "\0":
                 token = new Token(TokenType.Eof, "");
                 break;
             default:
@@ -133,12 +133,12 @@ public class Lexer
     
     private string ReadIdentifier()
     {
-        int tmp = _position;
-        while (char.IsLetter(_cur[0]) || char.IsDigit(_cur[0]))
+        int position = _position;
+        while (char.IsLetter(_cur[0]))
         {
             ReadChar();
         }
-        return _input.Substring(tmp, _position - tmp);
+        return _input.Substring(position, _position - position);
     }
 
     private string ReadNumber()

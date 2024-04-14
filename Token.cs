@@ -7,6 +7,8 @@ public enum TokenType
     
     Ident,
     Int,
+    True,
+    False,
     
     Assign,
     Plus,
@@ -31,8 +33,6 @@ public enum TokenType
     Function, 
     Call,
     Return,
-    True,
-    False,
     If,
     Else,
     Type

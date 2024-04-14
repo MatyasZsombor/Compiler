@@ -10,23 +10,23 @@ public class ParserTests
     [Fact]
     private void Test1()
     {
-        _lexer = new Lexer("int x = 5;\nint y = 10; int foobar = 838383;");
-        _parser = new Parser(_lexer.LexedTokens);
-
-        ProgramNode programNode = _parser.ParseProgram();
-        
-        Assert.Equal(3, programNode.Statements.Count);
-
-        string[] expectedIdentifiers =
+        List<(string input, string expected)> tests = 
         [
-            "x",
-            "y",
-            "foobar"
+            ("int x = 5;", "int x = 5;"),
+            ("bool y = true;", "bool y = true;"),
+            ("int foobar = y;", "int foobar = y;")
         ];
 
-        for (int i = 0; i < expectedIdentifiers.Length; i++)
+        foreach (var test in tests)
         {
-            Assert.True(TestDeclaration(programNode.Statements[i], "int", expectedIdentifiers[i]));
+            _lexer = new Lexer(test.input);
+            _parser = new Parser(_lexer.LexedTokens);
+
+            ProgramNode programNode = _parser.ParseProgram();
+            
+            Assert.Empty(_parser.Errors);
+            
+            Assert.Equal(test.expected, programNode.ToString());
         }
     }
     
@@ -137,15 +137,76 @@ public class ParserTests
         }
     }
 
-    private static bool TestDeclaration(INode node, string type, string name)
+    [Fact]
+    private void Test6()
     {
-        if (node.TokenLiteral() != type || node.GetType() != typeof(DeclarationStatement))
+        List<(string input, string expected)> tests = 
+        [
+            ("true;", "true"),
+            ("false;", "false"),
+            ("3 > 5 == false;", "((3 > 5) == false)"),
+            ("3 < 5 == true;", "((3 < 5) == true)"),
+            ("true == true;", "(true == true)"),
+            ("!true;", "(!true)")
+        ];
+
+        foreach (var test in tests)
         {
-            return false;
+            _lexer = new Lexer(test.input);
+            _parser = new Parser(_lexer.LexedTokens);
+
+            ProgramNode programNode = _parser.ParseProgram();
+            
+            Assert.Empty(_parser.Errors);
+            
+            Assert.Equal(test.expected, programNode.ToString());
         }
+    }
+    
+    [Fact]
+    private void Test7()
+    {
+        List<(string input, string expected)> tests = 
+        [
+            ("1 + (2 + 3) + 4;", "((1 + (2 + 3)) + 4)"),
+            ("(5 + 5) * 2;", "((5 + 5) * 2)"),
+            ("2 / (5 + 5);", "(2 / (5 + 5))"),
+            ("-(5 + 5);", "(-(5 + 5))"),
+            ("!(true == true);", "(!(true == true))"),
+        ];
 
-        DeclarationStatement statement = (DeclarationStatement)node;
+        foreach (var test in tests)
+        {
+            _lexer = new Lexer(test.input);
+            _parser = new Parser(_lexer.LexedTokens);
 
-        return statement.Name.Value == name && statement.Name.TokenLiteral() == name;
+            ProgramNode programNode = _parser.ParseProgram();
+            
+            Assert.Empty(_parser.Errors);
+            
+            Assert.Equal(test.expected, programNode.ToString());
+        }
+    }
+    
+    [Fact]
+    private void Test8()
+    {
+        List<(string input, string expected)> tests = 
+        [
+            ("return 5;", "return 5;"),
+            ("return false == true;", "return (false == true);")
+        ];
+
+        foreach (var test in tests)
+        {
+            _lexer = new Lexer(test.input);
+            _parser = new Parser(_lexer.LexedTokens);
+
+            ProgramNode programNode = _parser.ParseProgram();
+            
+            Assert.Empty(_parser.Errors);
+            
+            Assert.Equal(test.expected, programNode.ToString());
+        }
     }
 }

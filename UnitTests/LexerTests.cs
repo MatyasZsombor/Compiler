@@ -51,9 +51,31 @@ public class LexerTest
             Assert.True(expectedToken.CompareTo(_lexer.LexedTokens[i]), $"Expected token type {expectedToken.TokenType} and token literal {expectedToken.Literal}");
         }
     }
-
+    
     [Fact]
     public void Test3()
+    {
+        _lexer = new Lexer("bool x = false;");
+        Token[] expected =
+        [
+            new Token(TokenType.Type, "bool"),
+            new Token(TokenType.Ident, "x"),
+            new Token(TokenType.Assign, "="),
+            new Token(TokenType.False, "false"),
+            new Token(TokenType.Semicolon, ";"),
+            new Token(TokenType.Eof, "")
+        ];
+
+        Assert.Equal(_lexer.LexedTokens.Count, expected.Length);
+        for (int i = 0; i < expected.Length; i++)
+        {
+            Token expectedToken = expected[i]; 
+            Assert.True(expectedToken.CompareTo(_lexer.LexedTokens[i]), $"Expected token type {expectedToken.TokenType} and token literal {expectedToken.Literal}");
+        }
+    }
+
+    [Fact]
+    public void Test4()
     {
         _lexer = new Lexer("!-/*5;\n5 < 10 > 5;");
         Token[] expected =
@@ -82,7 +104,7 @@ public class LexerTest
     }
     
     [Fact]
-    public void Test4()
+    public void Test5()
     {
         _lexer = new Lexer("==\n!=\nif\nelse\ntrue\nfalse\n");
         Token[] expected =
@@ -105,7 +127,7 @@ public class LexerTest
     }
 
     [Fact]
-    public void Test5()
+    public void Test6()
     {
         _lexer = new Lexer("int myFunc(int x, int y); myFunc(1, 2);");
         Token[] expected =
