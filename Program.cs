@@ -30,7 +30,7 @@ internal static class Program
             return;
         }
 
-        SyntaxChecker syntaxChecker = new SyntaxChecker(node);
+        SyntaxChecker syntaxChecker = new SyntaxChecker(node.Statements);
 
         if (syntaxChecker.Errors.Count != 0)
         {

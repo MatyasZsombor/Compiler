@@ -58,11 +58,11 @@ public class PrefixExpression(Token token, string @operator, IExpression right =
     public override string ToString() => "(" + Operator + Right + ")";
 }
 
-public class InfixExpression(Token token, string @operator, IExpression? left, IExpression right = null!) : IExpression
+public class InfixExpression(Token token, string @operator, IExpression left, IExpression right = null!) : IExpression
 {
     private Token Token { get; } = token;
     public string Operator { get; } = @operator;
-    public IExpression? Left { get;}= left;
+    public IExpression Left { get;}= left;
     public IExpression Right { get; set; }= right;
     
     public string TokenLiteral() => Token.Literal;
