@@ -99,7 +99,6 @@ public class AssigmentStatement(IExpression value, Token token = null!, Identifi
     public string TokenLiteral() => Token.Literal;
     
     public override string ToString() => Name + " = " + Value + ";";
-    
 }
 
 public class ReturnStatement(Token token, IExpression returnValue = null!) : IStatement

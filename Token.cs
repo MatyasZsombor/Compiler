@@ -7,6 +7,7 @@ public enum TokenType
     
     Ident,
     Int,
+    Char,
     True,
     False,
     
@@ -31,6 +32,7 @@ public enum TokenType
     Rparen,
     Lbrace,
     Rbrace,
+    Apostrophe,
     
     Function, 
     Call,

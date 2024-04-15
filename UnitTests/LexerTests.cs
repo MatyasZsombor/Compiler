@@ -8,7 +8,7 @@ public class LexerTest
     [Fact]
     public void Test1()
     {
-        _lexer = new Lexer("=+(){},;");
+        _lexer = new Lexer("=+(){},;'a'");
         Token[] expected =
         [
             new Token(TokenType.Assign, "="),
@@ -19,6 +19,9 @@ public class LexerTest
             new Token(TokenType.Rbrace, "}"),
             new Token(TokenType.Comma, ","),
             new Token(TokenType.Semicolon, ";"),
+            new Token(TokenType.Apostrophe, "'"),
+            new Token(TokenType.Char, "a"),
+            new Token(TokenType.Apostrophe, "'"),
             new Token(TokenType.Eof, "")
         ];
 

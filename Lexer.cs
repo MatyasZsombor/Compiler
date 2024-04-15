@@ -13,14 +13,15 @@ public class Lexer
         {"else", TokenType.Else},
         {"return", TokenType.Return},
     };
-
+    
     public readonly List<Token> LexedTokens = [];
     private readonly int _tokCounter;
     private readonly string _input;
     private int _position;
     private int _readPosition;
     private string _cur = "";
-
+    public readonly List<string> Errors = [];
+    
     public Lexer(string input)
     {
         _input = input + "\0";
@@ -45,6 +46,9 @@ public class Lexer
         
         switch (_cur)
         {
+            case "'":
+                token = new Token(TokenType.Apostrophe, _cur);
+                break;
             case "=":
                 if (PeekChar() == '=')
                 {
@@ -122,6 +126,11 @@ public class Lexer
                 if (char.IsLetter(_cur[0]))
                 {
                     string identifier = ReadIdentifier();
+                    if (_tokCounter > 0 && LexedTokens[_tokCounter - 1].TokenType == TokenType.Apostrophe)
+                    {
+                        return new Token(TokenType.Char, identifier);
+                    }
+                    
                     if (_tokCounter <= 0 || LexedTokens[_tokCounter - 1].TokenType != TokenType.Type ||
                         _cur != "(")
                     {
@@ -130,7 +139,7 @@ public class Lexer
 
                     if (!keyWords.TryAdd(identifier, TokenType.Call))
                     {
-                        throw new Exception("A method with the same signature has already been declared.");
+                        Errors.Add("A method with the same signature has already been declared.");
                     }
                     return new Token(TokenType.Function, identifier);
                 }
