@@ -19,6 +19,7 @@ public class Parser
     public readonly List<string> Errors = [];
     private readonly Dictionary<TokenType, IInfixParser> _infixParsers = [];
     private readonly Dictionary<TokenType, IPrefixParser> _prefixParsers = [];
+    private readonly Dictionary<TokenType, IPostfixParser> _postfixParsers = [];
 
     public Parser(List<Token> tokens)
     {
@@ -40,6 +41,9 @@ public class Parser
         RegisterInfix(TokenType.Lt, new InfixExpressionParser(Precedence.Comparison));
         RegisterInfix(TokenType.Gt, new InfixExpressionParser(Precedence.Comparison));
 
+        RegisterPostfix(TokenType.PostfixPlus, new PostfixParser());
+        RegisterPostfix(TokenType.PostfixMinus, new PostfixParser());
+        
         NextToken();
         NextToken();
     }
@@ -62,28 +66,66 @@ public class Parser
         return programNode;
     }
 
-    private IStatement? ParseStatement() =>
-        _curToken.TokenType switch
-        {
-            TokenType.Type   => ParseDeclaration(),
-            TokenType.Return => ParseReturnStatement(),
-            _                => ParseExpressionStatement()
-        };
-
-    private ExpressionStatement? ParseExpressionStatement()
+    private IStatement? ParseStatement()
     {
-        //TODO Remove expression statements and only leave ++ and -- operators
-        IExpression? parsed = ParseExpression(Precedence.Lowest);
-        if (parsed == null)
+        switch (_curToken.TokenType)
         {
+            case TokenType.Type:
+                return ParseDeclaration();
+            case TokenType.Return:
+                return ParseReturnStatement();
+            case TokenType.Ident:
+                return ParsePostfixStatement();
+            default:
+                Errors.Add( "Only assigment, call, increment and decrement can be used as statement");
+                while (_curToken.TokenType != TokenType.Semicolon)
+                {
+                    if (_curToken.TokenType == TokenType.Eof)
+                    {
+                        Errors.Add($"Expected next token to be {TokenType.Semicolon}, got {_peekToken.TokenType} instead");
+                        break;
+                    }
+                    NextToken();
+                }
+                return null;
+        }
+    }
+
+    private PostFixStatement? ParsePostfixStatement()
+    {
+        if (_curToken.TokenType != TokenType.Ident)
+        {
+            Errors.Add("");
             return null;
         }
 
-        ExpressionStatement statement = new ExpressionStatement(_curToken, parsed);
+        Token tmpToken = _curToken;
+        Identifier tmp = new Identifier(_curToken, _curToken.Literal);
+        NextToken();
+        
+        _postfixParsers.TryGetValue(_curToken.TokenType, out var postfixParser);
+        if (postfixParser== null)
+        { 
+            Errors.Add("Couldn't find Postfix Parser for " + _curToken.TokenType);
+            return null;
+        }
+        
+        IStatement? statement = postfixParser.Parse(this, _curToken);
 
-        ExpectPeek(TokenType.Semicolon);
+        if (statement == null)
+        {
+            return null;
+        } 
+        if (statement.GetType() == typeof(PostFixStatement))
+        {
+            PostFixStatement postFixStatement = (PostFixStatement) statement;
+            postFixStatement.Token = tmpToken;
+            postFixStatement.Name = tmp;
 
-        return statement;
+            return postFixStatement;
+        }
+
+        return null;
     }
 
     private IExpression? ParseExpression(Precedence precedence)
@@ -194,6 +236,11 @@ public class Parser
     {
         _prefixParsers.Add(tokenType, prefixParser);
     }
+    
+    private void RegisterPostfix(TokenType tokenType, IPostfixParser postfixParser)
+    {
+        _postfixParsers.Add(tokenType, postfixParser);
+    }
 
     private void RegisterInfix(TokenType tokenType, IInfixParser infixParser)
     {
@@ -221,6 +268,11 @@ public class Parser
     {
         public Precedence Precedence { get; }
         IExpression? Parse(Parser parser, IExpression? left, Token token);
+    }
+    
+    private interface IPostfixParser
+    { 
+        IStatement? Parse(Parser parser, Token token);
     }
 
     private class InfixExpressionParser(Precedence precedence) : IInfixParser
@@ -302,6 +354,15 @@ public class Parser
             prefixExpression.Right = expression;
 
             return prefixExpression;
+        }
+    }
+    
+    private class PostfixParser : IPostfixParser
+    {
+        public IStatement? Parse(Parser parser, Token token)
+        {
+            Token tmp = token;
+           return parser.ExpectPeek(TokenType.Semicolon) ? new PostFixStatement(tmp.Literal) : null;
         }
     }
 }

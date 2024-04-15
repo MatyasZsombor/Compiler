@@ -48,6 +48,15 @@ public class BoolLiteral(Token token, bool value) : IExpression
     public override string ToString() => Token.Literal;
 }
 
+public class CharLiteral(Token token, char value) : IExpression
+{
+    private Token Token { get; } = token;
+    public char Value { get; } = value;
+
+    public string TokenLiteral() => Token.Literal;
+    public override string ToString() => Token.Literal;
+}
+
 public class PrefixExpression(Token token, string @operator, IExpression right = null!) : IExpression
 {
     private Token Token { get; } = token;
@@ -89,10 +98,12 @@ public class ReturnStatement(Token token, IExpression returnValue = null!) : ISt
     public override string ToString() => TokenLiteral() + " " + ReturnValue.ToString() + ";";
 }
 
-public class ExpressionStatement(Token token, IExpression expression = null!) : IStatement
+public class PostFixStatement(string @operator, Identifier name = null!, Token token = null!) : IStatement
 {
-    private Token Token { get; } = token;
-    public IExpression Expression { get; } = expression;
+    public Token Token { get; set; } = token;
+    public string Operator { get; } = @operator;
+    public Identifier Name { get; set; } = name;
+
     public string TokenLiteral() => Token.Literal;
-    public override string ToString() => Expression.ToString();
+    public override string ToString() => Name + Operator + ";";
 }
