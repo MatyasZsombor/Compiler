@@ -12,9 +12,9 @@ public enum TokenType
     
     Assign,
     Plus,
-    PrefixPlus,
+    PostfixPlus,
     Minus,
-    PrefixMinus,
+    PostfixMinus,
     Bang,
     Asterisk,
     Slash,
