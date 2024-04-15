@@ -23,6 +23,7 @@ public class Compiler
                     Compile(statement);
                 }
                 break;
+            
             case InfixExpression infixExpression:
                 Compile(infixExpression.Left);
                 Compile(infixExpression.Right);
@@ -50,6 +51,7 @@ public class Compiler
                         break;
                 }
                 break;
+            
             case PrefixExpression prefixExpression:
                 Compile(prefixExpression.Right);
                 switch (prefixExpression.Operator)
@@ -62,6 +64,22 @@ public class Compiler
                         break;
                 }
                 break;
+            
+            case PostFixStatement postFixStatement:
+                Compile(postFixStatement.Name);
+                Instructions.Add(("PUSH", "1"));
+
+                if (postFixStatement.Operator == "++")
+                {
+                    Instructions.Add(("ADD", ""));
+                    Instructions.Add(("STA", postFixStatement.Name.ToString()));
+                    break;
+                }
+                Instructions.Add(("NEG", ""));
+                Instructions.Add(("ADD", ""));
+                Instructions.Add(("STA", postFixStatement.Name.ToString()));
+                break;
+            
             case DeclarationStatement declarationStatement:
                 Identifiers.Add(declarationStatement.Name.ToString(), (declarationStatement.TokenLiteral(), _curOffset));
                 Compile(declarationStatement.Value);
@@ -75,12 +93,20 @@ public class Compiler
                     _curOffset++;
                 }
                 break;
+            
+            case AssigmentStatement assigmentStatement:
+                Compile(assigmentStatement.Value);
+                Instructions.Add(("STA", assigmentStatement.TokenLiteral()));
+                break;
+                
             case IntegerLiteral integerLiteral:
                 Instructions.Add(("PUSH", integerLiteral.Value.ToString()));
                 break;
+            
             case BoolLiteral boolLiteral:
                 Instructions.Add(("PUSH", boolLiteral.Value ? "1" : "0"));
                 break;
+            
             case Identifier identifier:
                 Instructions.Add(("LDA", identifier.ToString()));
                 break;

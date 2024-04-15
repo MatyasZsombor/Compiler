@@ -90,6 +90,18 @@ public class DeclarationStatement(Token token, Identifier name, IExpression valu
     
 }
 
+public class AssigmentStatement(IExpression value, Token token = null!, Identifier name = null!) : IStatement
+{
+    public Token Token { get; set; } = token;
+    public Identifier Name { get; set; } = name;
+    public IExpression Value { get; } = value;
+    
+    public string TokenLiteral() => Token.Literal;
+    
+    public override string ToString() => Name + " = " + Value + ";";
+    
+}
+
 public class ReturnStatement(Token token, IExpression returnValue = null!) : IStatement
 {
     private Token Token { get; } = token;

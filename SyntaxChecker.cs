@@ -15,7 +15,9 @@ public class SyntaxChecker
         {">", ["int"]},
         {"==", ["bool","int"]},
         {"!=", ["bool","int"]},
-        {"!", ["bool"]}
+        {"!", ["bool"]},
+        {"++", ["int"]},
+        {"--", ["int"]}
     };
 
     public SyntaxChecker(List<IStatement> statements)
@@ -32,6 +34,23 @@ public class SyntaxChecker
         {
             CheckDeclarationStatement((DeclarationStatement) statement);
         }
+
+        if (statement.GetType() == typeof(PostFixStatement))
+        {
+            PostFixStatement postFixStatement = (PostFixStatement) statement;
+            if (_identifiers.TryGetValue(postFixStatement.TokenLiteral(), out string? tmp))
+            {
+                CheckPostfixType(postFixStatement.Operator, tmp);
+                return;
+            }
+
+            Errors.Add($"Cannot resolve symbol \'{postFixStatement.TokenLiteral()}\'");
+        }
+
+        if (statement.GetType() == typeof(AssigmentStatement))
+        {
+            CheckAssigmentStatement((AssigmentStatement)statement);
+        }
     }
 
     private void CheckDeclarationStatement(DeclarationStatement statement)
@@ -40,11 +59,27 @@ public class SyntaxChecker
         {
             Errors.Add($"Variable {statement.Name} is already declared");
         }
-
+        
         string type = CheckExpression(statement.Value);
         if (type != statement.TokenLiteral())
         {
             Errors.Add($"Cannot assign {type} to {statement.TokenLiteral()}");
+        }
+        
+    }
+
+    private void CheckAssigmentStatement(AssigmentStatement statement)
+    {
+        if (!_identifiers.TryGetValue(statement.TokenLiteral(), out string? variableType))
+        {
+            Errors.Add($"Cannot resolve symbol '{statement.TokenLiteral()}'");
+        }
+
+        variableType ??= "unresolved";
+        string type = CheckExpression(statement.Value);
+        if (type != variableType && variableType != "unresolved")
+        {
+            Errors.Add($"Cannot assign {type} to {variableType}");
         }
     }
 
@@ -102,6 +137,14 @@ public class SyntaxChecker
             AddOperatorErrorInfix(@operator, typeL, typeR);
         }
         return expected[0];
+    }
+
+    private void CheckPostfixType(string @operator, string type)
+    {
+        if (type != _expectedTypes[@operator][0])
+        {
+            AddOperatorError(@operator, type);
+        }
     }
 
     private string CheckPrefixType(string @operator, string type)

@@ -43,6 +43,7 @@ public class Parser
 
         RegisterPostfix(TokenType.PostfixPlus, new PostfixParser());
         RegisterPostfix(TokenType.PostfixMinus, new PostfixParser());
+        RegisterPostfix(TokenType.Assign, new AssigmentParser());
         
         NextToken();
         NextToken();
@@ -91,7 +92,7 @@ public class Parser
         }
     }
 
-    private PostFixStatement? ParsePostfixStatement()
+    private IStatement? ParsePostfixStatement()
     {
         if (_curToken.TokenType != TokenType.Ident)
         {
@@ -125,7 +126,11 @@ public class Parser
             return postFixStatement;
         }
 
-        return null;
+        AssigmentStatement assigmentStatement = (AssigmentStatement) statement;
+        assigmentStatement.Token = tmpToken;
+        assigmentStatement.Name = tmp;
+
+        return assigmentStatement;
     }
 
     private IExpression? ParseExpression(Precedence precedence)
@@ -363,6 +368,18 @@ public class Parser
         {
             Token tmp = token;
            return parser.ExpectPeek(TokenType.Semicolon) ? new PostFixStatement(tmp.Literal) : null;
+        }
+    }
+
+    private class AssigmentParser : IPostfixParser
+    {
+        public IStatement? Parse(Parser parser, Token token)
+        {
+            parser.NextToken();
+            IExpression? tmp = parser.ParseExpression(Precedence.Lowest);
+            parser.ExpectPeek(TokenType.Semicolon);
+
+            return tmp == null ? null : new AssigmentStatement(tmp);
         }
     }
 }

@@ -40,7 +40,18 @@ internal static class Program
             }
             return;
         }
+
+        Compiler compiler = new Compiler(node);
+
+        foreach ((string, string ) instruction in compiler.Instructions)
+        {
+            Console.WriteLine(instruction.ToString());
+        }
+
+        compiler.Instructions.Add(("LDA", "y"));
+        Vm vm = new Vm(compiler.Instructions, compiler.Identifiers);
         
+        Console.WriteLine(vm.Top());
         Console.WriteLine("Finished");
     }
 }

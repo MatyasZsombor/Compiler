@@ -6,6 +6,7 @@ public class Lexer
     {
         {"int", TokenType.Type},
         {"bool", TokenType.Type},
+        {"char", TokenType.Type},
         {"true", TokenType.True},
         {"false", TokenType.False},
         {"if", TokenType.If},
@@ -59,7 +60,7 @@ public class Lexer
                 {
                     string tmp = _cur;
                     ReadChar();
-                    token = new Token(TokenType.PrefixPlus, tmp + _cur);
+                    token = new Token(TokenType.PostfixPlus, tmp + _cur);
                     break;
                 }
                 token = new Token(TokenType.Plus, _cur);
@@ -69,7 +70,7 @@ public class Lexer
                 {
                     string tmp = _cur;
                     ReadChar();
-                    token = new Token(TokenType.PrefixMinus, tmp + _cur);
+                    token = new Token(TokenType.PostfixMinus, tmp + _cur);
                     break;
                 }
                 token = new Token(TokenType.Minus, _cur);
