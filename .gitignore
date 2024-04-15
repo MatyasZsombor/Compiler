@@ -1,9 +1,11 @@
-﻿Compiler.sln
-Compiler.csproj
-UnitTests/UnitTests.csproj
+﻿UnitTests/UnitTests.csproj
 UnitTests/GlobalUsings.cs
 /obj
 /bin
 UnitTests/obj
 UnitTests/bin
 .idea
+Compiler.sln.DotSettings
+Compiler.sln
+Compiler.csproj
+Compiler.sln.DotSettings.user
