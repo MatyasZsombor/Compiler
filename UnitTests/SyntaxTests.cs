@@ -41,5 +41,36 @@ public class SyntaxTests
         }
     }
     
-    //TODO IMPLEMENT TESTING FOF INFIX OPERATORS
+    [Fact]
+    private void Test2()
+    {
+        List<(string input, string expected)> tests =
+        [
+            ("int x  = 5 + 5;", ""),
+            ("bool x = 5 == 5;", ""),
+            ("int x = 5 == 5;", "Cannot assign bool to int"),
+            ("int x = false + 5;", "Cannot apply operator '+' to operands of type 'bool' and 'int'"),
+            ("int x = false + (5 - 15) + 3;", "Cannot apply operator '+' to operands of type 'bool' and 'int'")
+        ];
+        
+        foreach (var test in tests)
+        {
+            _lexer = new Lexer(test.input);
+            _parser = new Parser(_lexer.LexedTokens);
+
+            ProgramNode programNode = _parser.ParseProgram();
+            _syntaxChecker = new SyntaxChecker(programNode.Statements);
+            
+            Assert.Empty(_parser.Errors);
+            if (test.expected != "")
+            {
+                Assert.Single(_syntaxChecker.Errors);
+                Assert.Equal(test.expected, _syntaxChecker.Errors[0]);
+            }
+            else
+            {
+                Assert.Empty(_syntaxChecker.Errors);
+            }
+        }
+    }
 }

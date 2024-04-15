@@ -91,7 +91,7 @@ public class SyntaxChecker
     
     private void AddOperatorErrorInfix(string @operator, string type1, string type2)
     {
-        Errors.Add($"Cannot apply operator '{@operator}' to operands of type '{type1}' and '{type2}''");
+        Errors.Add($"Cannot apply operator '{@operator}' to operands of type '{type1}' and '{type2}'");
     }
 
     private string CheckInfixType(string @operator, string typeL, string typeR)
