@@ -158,4 +158,28 @@ public class ParserTests
             Assert.Equal(test.expected, programNode.ToString());
         }
     }
+
+    [Fact]
+    private void Test7()
+    {
+        List<(string input, string expected)> tests = 
+        [
+            ("if(x == 5){}", "if(x == 5){}"),
+            ("if (x < y) { x++; }", "if(x < y){x++;}"),
+            ("if(x < y) { x++; } else { y++; }", "if(x < y){x++;} else {y++;}")
+        ];
+
+        foreach (var test in tests)
+        {
+            _lexer = new Lexer(test.input);
+            _parser = new Parser(_lexer.LexedTokens);
+
+            ProgramNode programNode = _parser.ParseProgram();
+            
+            Assert.Empty(_parser.Errors);
+            Assert.Single(programNode.Statements);
+            
+            Assert.Equal(test.expected, programNode.ToString());
+        }
+    }
 }

@@ -118,3 +118,25 @@ public class PostFixStatement(string @operator, Identifier name = null!, Token t
     public string TokenLiteral() => Token.Literal;
     public override string ToString() => Name + Operator + ";";
 }
+
+public class BlockStatement(Token token) : IStatement
+{
+    public Token Token { get; } = token;
+    public List<IStatement> Statements { get; } = [];
+
+    public string TokenLiteral() => Token.Literal;
+    public override string ToString() => Statements.Aggregate("", (current, statement) => current + statement);
+}
+
+public class IfStatement(Token token, IExpression? condition, BlockStatement? consequence = null) : IStatement
+{
+    public Token Token { get; } = token;
+    public IExpression? Condition { get; } = condition;
+    public BlockStatement? Consequence { get; } = consequence;
+    public BlockStatement? Alternative { get; set; }
+
+    public string TokenLiteral() => Token.Literal;
+
+    public override string ToString() =>
+        "if" + Condition + "{" + Consequence + "}" + (Alternative != null ? " else {" + Alternative + "}": ""); 
+}

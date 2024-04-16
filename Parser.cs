@@ -77,13 +77,15 @@ public class Parser
                 return ParseReturnStatement();
             case TokenType.Ident:
                 return ParsePostfixStatement();
+            case TokenType.If:
+                return ParseIfStatement();
             default:
                 Errors.Add( "Only assigment, call, increment and decrement can be used as statement");
                 while (_curToken.TokenType != TokenType.Semicolon)
                 {
                     if (_curToken.TokenType == TokenType.Eof)
                     {
-                        Errors.Add($"Expected next token to be {TokenType.Semicolon}, got {_peekToken.TokenType} instead");
+                        Errors.Add($"Expected next token to be {TokenType.Semicolon}");
                         break;
                     }
                     NextToken();
@@ -165,12 +167,98 @@ public class Parser
         return left;
     }
 
+    private IfStatement? ParseIfStatement()
+    {
+        Token tmp = _curToken;
+        
+        if (!ExpectPeek(TokenType.Lparen))
+        {
+            return null;
+        }
+        
+        if (_peekToken.TokenType == TokenType.Rparen)
+        {
+            AddExpressionError();
+            return null;
+        }
+        
+        NextToken();
+        
+        IExpression? condition = ParseExpression(Precedence.Lowest);
+
+        if (!ExpectPeek(TokenType.Rparen))
+        {
+            return null;
+        }
+        
+        if (!ExpectPeek(TokenType.Lbrace))
+        {
+            return null;
+        }
+        
+        if (_peekToken.TokenType == TokenType.Rbrace)
+        {
+            NextToken();
+            return new IfStatement(tmp, condition);
+        }
+        
+        IfStatement ifStatement = new IfStatement(tmp, condition, ParseBlockStatement());
+
+        if (_peekToken.TokenType == TokenType.Else)
+        {
+            NextToken();
+
+            if (!ExpectPeek(TokenType.Lbrace))
+            {
+                return null;
+            }
+            
+            if (_peekToken.TokenType == TokenType.Rbrace)
+            {
+                NextToken();
+                ifStatement.Alternative = null;
+            }
+            ifStatement.Alternative = ParseBlockStatement();
+        }
+
+        return ifStatement;
+    }
+
+    private BlockStatement? ParseBlockStatement()
+    {
+        BlockStatement blockStatement = new BlockStatement(_curToken);
+        NextToken();
+
+        while (_curToken.TokenType != TokenType.Rbrace)
+        {
+            if (_curToken.TokenType == TokenType.Eof)
+            {
+                Errors.Add($"Expected next token to be {TokenType.Semicolon}");
+                return null;
+            }
+            IStatement? statement = ParseStatement();
+            if (statement != null)
+            {
+                blockStatement.Statements.Add(statement);
+            }
+            NextToken();
+        }
+        return blockStatement;
+    }
+    
     private ReturnStatement? ParseReturnStatement()
     {
         ReturnStatement statement = new ReturnStatement(_curToken);
+        if (_peekToken.TokenType == TokenType.Semicolon)
+        {
+            AddExpressionError();
+            return null;
+        }
+        
         NextToken();
-
+        
         IExpression? tmp = ParseExpression(Precedence.Lowest);
+        
         ExpectPeek(TokenType.Semicolon);
 
         if (tmp == null)
@@ -198,6 +286,12 @@ public class Parser
             return null;
         }
 
+        if (_peekToken.TokenType == TokenType.Semicolon)
+        {
+            AddExpressionError();
+            return null;
+        }
+        
         NextToken();
         IExpression? tmp = ParseExpression(Precedence.Lowest);
         ExpectPeek(TokenType.Semicolon);
@@ -212,7 +306,12 @@ public class Parser
         return statement;
     }
 
-
+    private void AddExpressionError()
+    {
+        Errors.Add("Expression expected");
+        NextToken();
+    }
+    
     private bool ExpectPeek(TokenType tokenType)
     {
         if (_peekToken.TokenType != tokenType)
@@ -375,6 +474,12 @@ public class Parser
     {
         public IStatement? Parse(Parser parser, Token token)
         {
+            if (parser._peekToken.TokenType == TokenType.Semicolon)
+            {
+                parser.AddExpressionError();
+                return null;
+            }
+            
             parser.NextToken();
             IExpression? tmp = parser.ParseExpression(Precedence.Lowest);
             parser.ExpectPeek(TokenType.Semicolon);

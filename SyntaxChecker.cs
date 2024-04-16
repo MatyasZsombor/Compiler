@@ -24,21 +24,21 @@ public class SyntaxChecker
     {
         foreach (IStatement statement in statements)
         {
-            CheckSyntax(statement);
+            CheckSyntax(statement, null);
         }
     }
     
-    private void CheckSyntax(IStatement statement)
+    private void CheckSyntax(IStatement statement, Dictionary<string, string>? bindings)
     {
         if (statement.GetType() == typeof(DeclarationStatement))
         {
-            CheckDeclarationStatement((DeclarationStatement) statement);
+            CheckDeclarationStatement((DeclarationStatement) statement, bindings);
         }
 
         if (statement.GetType() == typeof(PostFixStatement))
         {
             PostFixStatement postFixStatement = (PostFixStatement) statement;
-            if (_identifiers.TryGetValue(postFixStatement.TokenLiteral(), out string? tmp))
+            if (_identifiers.TryGetValue(postFixStatement.TokenLiteral(), out string? tmp) || (bindings != null && bindings.TryGetValue(postFixStatement.TokenLiteral(), out tmp)))
             {
                 CheckPostfixType(postFixStatement.Operator, tmp);
                 return;
@@ -49,18 +49,68 @@ public class SyntaxChecker
 
         if (statement.GetType() == typeof(AssigmentStatement))
         {
-            CheckAssigmentStatement((AssigmentStatement)statement);
+            CheckAssigmentStatement((AssigmentStatement)statement, bindings);
+        }
+
+        if (statement.GetType() == typeof(IfStatement))
+        {
+            CheckIfStatement((IfStatement)statement, bindings);
         }
     }
 
-    private void CheckDeclarationStatement(DeclarationStatement statement)
+    private void CheckIfStatement(IfStatement statement, Dictionary<string,string>? localBindings)
     {
-        if (!_identifiers.TryAdd(statement.Name.ToString(), statement.TokenLiteral()))
+        Dictionary<string, string> local = [];
+        if (localBindings != null)
+        {
+            local = new Dictionary<string, string>(localBindings);
+        }
+        string ifType = CheckExpression(statement.Condition!, local);
+
+        if (ifType != "bool" && ifType != "unresolved")
+        {
+            Errors.Add($"Cannot convert type '{ifType}' to 'bool'");
+        }
+
+        if (statement.Consequence != null)
+        {
+            foreach (IStatement blockStatement in statement.Consequence.Statements)
+            {
+                CheckSyntax(blockStatement, local);
+            }
+        }
+
+        if (statement.Alternative == null)
+        {
+            return;
+        }
+
+        {
+            Dictionary<string, string> localElse = [];
+            if (localBindings != null)
+            {
+                localElse = new Dictionary<string, string>(localBindings);
+            }
+            foreach (IStatement blockStatement in statement.Alternative.Statements)
+            {
+                CheckSyntax(blockStatement, localElse);
+            }
+        }
+    }
+
+    private void CheckDeclarationStatement(DeclarationStatement statement,  Dictionary<string,string>? localBindings)
+    {
+        if (localBindings == null && !_identifiers.TryAdd(statement.Name.ToString(), statement.TokenLiteral()))
         {
             Errors.Add($"Variable {statement.Name} is already declared");
         }
         
-        string type = CheckExpression(statement.Value);
+        if (localBindings != null && (_identifiers.ContainsKey(statement.Name.ToString()) || !localBindings.TryAdd(statement.Name.ToString(), statement.TokenLiteral())))
+        {
+            Errors.Add($"Variable {statement.Name} is already declared");
+        }
+        
+        string type = CheckExpression(statement.Value, localBindings);
         if (type != statement.TokenLiteral())
         {
             Errors.Add($"Cannot assign {type} to {statement.TokenLiteral()}");
@@ -68,7 +118,7 @@ public class SyntaxChecker
         
     }
 
-    private void CheckAssigmentStatement(AssigmentStatement statement)
+    private void CheckAssigmentStatement(AssigmentStatement statement, Dictionary<string,string>? localBindings)
     {
         if (!_identifiers.TryGetValue(statement.TokenLiteral(), out string? variableType))
         {
@@ -76,14 +126,14 @@ public class SyntaxChecker
         }
 
         variableType ??= "unresolved";
-        string type = CheckExpression(statement.Value);
+        string type = CheckExpression(statement.Value, localBindings);
         if (type != variableType && variableType != "unresolved")
         {
             Errors.Add($"Cannot assign {type} to {variableType}");
         }
     }
 
-    private string CheckExpression(IExpression expression)
+    private string CheckExpression(IExpression expression,  Dictionary<string,string>? localBindings)
     {
         if (expression.GetType() == typeof(IntegerLiteral))
         {
@@ -97,7 +147,7 @@ public class SyntaxChecker
 
         if (expression.GetType() == typeof(Identifier))
         {
-            if (_identifiers.TryGetValue(expression.TokenLiteral(), out string? tmp))
+            if (_identifiers.TryGetValue(expression.TokenLiteral(), out string? tmp) || (localBindings != null && localBindings.TryGetValue(expression.TokenLiteral(), out tmp)))
             {
                 return tmp;
             }
@@ -109,12 +159,12 @@ public class SyntaxChecker
         if (expression.GetType() == typeof(PrefixExpression))
         {
             PrefixExpression prefixExpression = (PrefixExpression) expression;
-            return CheckPrefixType(prefixExpression.Operator, CheckExpression(prefixExpression.Right));
+            return CheckPrefixType(prefixExpression.Operator, CheckExpression(prefixExpression.Right, localBindings));
         }
         
         InfixExpression infixExpression = (InfixExpression) expression;
-        string typeL = CheckExpression(infixExpression.Left);
-        string typeR = CheckExpression(infixExpression.Right);
+        string typeL = CheckExpression(infixExpression.Left, localBindings);
+        string typeR = CheckExpression(infixExpression.Right, localBindings);
         
         return CheckInfixType(infixExpression.Operator, typeL, typeR);
     }
