@@ -8,7 +8,7 @@ public class LexerTest
     [Fact]
     public void Test1()
     {
-        _lexer = new Lexer("=+(){},;'a'");
+        _lexer = new Lexer("=+(){},;");
         Token[] expected =
         [
             new Token(TokenType.Assign, "="),
@@ -19,9 +19,6 @@ public class LexerTest
             new Token(TokenType.Rbrace, "}"),
             new Token(TokenType.Comma, ","),
             new Token(TokenType.Semicolon, ";"),
-            new Token(TokenType.Apostrophe, "'"),
-            new Token(TokenType.Char, "a"),
-            new Token(TokenType.Apostrophe, "'"),
             new Token(TokenType.Eof, "")
         ];
 
@@ -145,13 +142,43 @@ public class LexerTest
             new Token(TokenType.Ident, "y"),
             new Token(TokenType.Rparen, ")"),
             new Token(TokenType.Semicolon, ";"), 
-            new Token(TokenType.Call, "myFunc"), 
+            new Token(TokenType.Ident, "myFunc"), 
             new Token(TokenType.Lparen, "("),
             new Token(TokenType.Int, "1"),
             new Token(TokenType.Comma, ","),
             new Token(TokenType.Int, "2"),
             new Token(TokenType.Rparen, ")"),
             new Token(TokenType.Semicolon, ";"),
+            new Token(TokenType.Eof, "")
+        ];
+        
+        Assert.Equal(_lexer.LexedTokens.Count, expected.Length);
+        for (int i = 0; i < expected.Length; i++)
+        {
+            Token expectedToken = expected[i]; 
+            Assert.True(expectedToken.CompareTo(_lexer.LexedTokens[i]), $"Expected token type {expectedToken.TokenType} and token literal {expectedToken.Literal}");
+        }
+    }
+    
+    [Fact]
+    public void Test7()
+    {
+        _lexer = new Lexer("while(x < 5){ x++; break; }");
+        Token[] expected =
+        [
+            new Token(TokenType.While, "while"),
+            new Token(TokenType.Lparen, "("), 
+            new Token(TokenType.Ident, "x"),
+            new Token(TokenType.Lt, "<"),
+            new Token(TokenType.Int, "5"),
+            new Token(TokenType.Rparen, ")"),
+            new Token(TokenType.Lbrace, "{"),
+            new Token(TokenType.Ident, "x"),
+            new Token(TokenType.PostfixPlus, "++"),
+            new Token(TokenType.Semicolon, ";"),
+            new Token(TokenType.Break, "break"),
+            new Token(TokenType.Semicolon, ";"),
+            new Token(TokenType.Rbrace, "}"),
             new Token(TokenType.Eof, "")
         ];
         

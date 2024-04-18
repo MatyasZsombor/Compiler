@@ -1,6 +1,7 @@
 ﻿using Compiler;
 namespace UnitTests;
 
+
 public class SyntaxTests
 {
     private Lexer _lexer = null!;
@@ -106,4 +107,6 @@ public class SyntaxTests
             }
         }
     }
+    
+    //TODO WRITE TEST FOR IF SYNTAX, WHILE SYNTAX AND FOR FUNCTIONS
 }

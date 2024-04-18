@@ -1,9 +1,12 @@
 ﻿namespace Compiler;
+/// TODO IMPLEMENT CHECKING FOR BREAK AND RETURN; THEY CAN ONLY OCCUR IN A LOOP OR IN A METHOD
+/// TODO IMPLEMENT CHECKING FOR FUNCTIONS IN FUNCTIONS
 
 public class SyntaxChecker
 {
     public List<string> Errors { get; } = [];
     private readonly Dictionary<string, string> _identifiers = [];
+    private readonly Dictionary<string, (string returnType, string parameterTypes)> _functions = [];
 
     private readonly Dictionary<string, string[]> _expectedTypes = new()
     {
@@ -13,6 +16,21 @@ public class SyntaxChecker
         {"*", ["int"]},
         {"<", ["int"]},
         {">", ["int"]},
+        {"==", ["bool","int"]},
+        {"!=", ["bool","int"]},
+        {"!", ["bool"]},
+        {"++", ["int"]},
+        {"--", ["int"]}
+    };
+
+    private readonly Dictionary<string, string[]> _resultTypes = new()
+    {
+        {"+", ["int"]},
+        {"-", ["int"]},
+        {"/", ["int"]},
+        {"*", ["int"]},
+        {"<", ["bool"]},
+        {">", ["bool"]},
         {"==", ["bool","int"]},
         {"!=", ["bool","int"]},
         {"!", ["bool"]},
@@ -30,34 +48,85 @@ public class SyntaxChecker
     
     private void CheckSyntax(IStatement statement, Dictionary<string, string>? bindings)
     {
-        if (statement.GetType() == typeof(DeclarationStatement))
+        switch (statement)
         {
-            CheckDeclarationStatement((DeclarationStatement) statement, bindings);
-        }
+            case FunctionLiteral functionLiteral:
+                CheckFunctionLiteral(functionLiteral);
+                break;
+            
+            case DeclarationStatement declarationStatement:
+                CheckDeclarationStatement(declarationStatement, bindings);
+                break;
+            
+            case PostFixStatement postFixStatement:
+                if (_identifiers.TryGetValue(postFixStatement.TokenLiteral(), out string? tmp) ||
+                    (bindings != null && bindings.TryGetValue(postFixStatement.TokenLiteral(), out tmp)))
+                {
+                    CheckPostfixType(postFixStatement.Operator, tmp);
+                    return;
+                }
 
-        if (statement.GetType() == typeof(PostFixStatement))
-        {
-            PostFixStatement postFixStatement = (PostFixStatement) statement;
-            if (_identifiers.TryGetValue(postFixStatement.TokenLiteral(), out string? tmp) || (bindings != null && bindings.TryGetValue(postFixStatement.TokenLiteral(), out tmp)))
-            {
-                CheckPostfixType(postFixStatement.Operator, tmp);
-                return;
-            }
-
-            Errors.Add($"Cannot resolve symbol \'{postFixStatement.TokenLiteral()}\'");
-        }
-
-        if (statement.GetType() == typeof(AssigmentStatement))
-        {
-            CheckAssigmentStatement((AssigmentStatement)statement, bindings);
-        }
-
-        if (statement.GetType() == typeof(IfStatement))
-        {
-            CheckIfStatement((IfStatement)statement, bindings);
+                Errors.Add($"Cannot resolve symbol '{postFixStatement.TokenLiteral()}'");
+                break;
+            
+            case AssigmentStatement assigmentStatement:
+                CheckAssigmentStatement(assigmentStatement, bindings);
+                break;
+                
+            case IfStatement ifStatement:
+                CheckIfStatement(ifStatement, bindings);
+                break;
+            case WhileStatement whileStatement:
+                CheckWhileStatement(whileStatement, bindings);
+                break;
         }
     }
 
+    private void CheckFunctionLiteral(FunctionLiteral functionLiteral)
+    {
+        Dictionary<string, string> local = [];
+        string[] parameterTypes = [];
+        if (functionLiteral.Parameters != null)
+        {
+            parameterTypes = new string[functionLiteral.Parameters.Count];
+
+            for (int i = 0; i < functionLiteral.Parameters.Count; i++)
+            {
+                parameterTypes[i] = functionLiteral.Parameters[i].TokenLiteral();
+                if (_identifiers.ContainsKey(functionLiteral.Parameters[i].Name.Literal))
+                {
+                    Errors.Add($"Variable {functionLiteral.Parameters[i].Name.Literal} is already declared");
+                    continue;
+                }
+                local.Add(functionLiteral.Parameters[i].Name.Literal, functionLiteral.Parameters[i].TokenLiteral());
+            }
+        }
+        
+        if(!_functions.TryAdd(functionLiteral.Name.ToString(), (functionLiteral.TokenLiteral(), string.Join(",", parameterTypes))))
+        {
+            Errors.Add("Function with the same signature is already declared");
+        }
+
+        if (functionLiteral.Body != null)
+        {
+            foreach (IStatement statement in functionLiteral.Body.Statements)
+            {
+                if (statement.GetType() != typeof(ReturnStatement))
+                {
+                    CheckSyntax(statement, local);
+                    continue;
+                }
+
+                ReturnStatement returnStatement = (ReturnStatement) statement;
+                string type = CheckExpression(returnStatement.ReturnValue, local);
+                if (type != functionLiteral.TokenLiteral())
+                {
+                    Errors.Add($"Cannot convert expression type '{type} to return type {functionLiteral.TokenLiteral()}'");
+                }
+            }
+        }
+    }
+    
     private void CheckIfStatement(IfStatement statement, Dictionary<string,string>? localBindings)
     {
         Dictionary<string, string> local = [];
@@ -84,7 +153,6 @@ public class SyntaxChecker
         {
             return;
         }
-
         {
             Dictionary<string, string> localElse = [];
             if (localBindings != null)
@@ -95,6 +163,31 @@ public class SyntaxChecker
             {
                 CheckSyntax(blockStatement, localElse);
             }
+        }
+    }
+    
+    private void CheckWhileStatement(WhileStatement statement, Dictionary<string,string>? localBindings)
+    {
+        Dictionary<string, string> local = [];
+        if (localBindings != null)
+        {
+            local = new Dictionary<string, string>(localBindings);
+        }
+        string ifType = CheckExpression(statement.Condition!, local);
+
+        if (ifType != "bool" && ifType != "unresolved")
+        {
+            Errors.Add($"Cannot convert type '{ifType}' to 'bool'");
+        }
+
+        if (statement.Consequence == null)
+        {
+            return;
+        }
+
+        foreach (IStatement blockStatement in statement.Consequence.Statements)
+        {
+            CheckSyntax(blockStatement, local);
         }
     }
 
@@ -111,7 +204,7 @@ public class SyntaxChecker
         }
         
         string type = CheckExpression(statement.Value, localBindings);
-        if (type != statement.TokenLiteral())
+        if (type != statement.TokenLiteral() && type != "unresolved")
         {
             Errors.Add($"Cannot assign {type} to {statement.TokenLiteral()}");
         }
@@ -127,7 +220,7 @@ public class SyntaxChecker
 
         variableType ??= "unresolved";
         string type = CheckExpression(statement.Value, localBindings);
-        if (type != variableType && variableType != "unresolved")
+        if (type != variableType && variableType != "unresolved" && type != "unresolved")
         {
             Errors.Add($"Cannot assign {type} to {variableType}");
         }
@@ -143,6 +236,42 @@ public class SyntaxChecker
         if (expression.GetType() == typeof(BoolLiteral))
         {
             return "bool";
+        }
+
+        if (expression.GetType() == typeof(CallExpression))
+        {
+            CallExpression callExpression = (CallExpression)expression;
+            if (!_functions.ContainsKey(callExpression.FuncName.TokenLiteral()))
+            {
+                Errors.Add($"Cannot resolve symbol {callExpression.FuncName.TokenLiteral()}");
+                return "unresolved";
+            }
+            (string type, string returnTypes) = _functions[callExpression.FuncName.TokenLiteral()];
+            string[] types = returnTypes.Split(",");
+
+            if (callExpression.Arguments == null && types.Length == 0)
+            {
+                return type;
+            }
+            if(callExpression.Arguments == null && types.Length != 0)
+            {
+                Errors.Add($"Function '{callExpression.FuncName}' has {types.Length} parameter(s) but is invoked with 0 argument(s)");
+                return type;
+            }
+            if (types.Length != callExpression.Arguments!.Count)
+            {
+                Errors.Add($"Function '{callExpression.FuncName}' has {types.Length} parameter(s) but is invoked with {callExpression.Arguments.Count} argument(s)");
+            }
+
+            for (int i = 0; i < types.Length; i++)
+            {
+                string argType = CheckExpression(callExpression.Arguments[i], localBindings);
+                if (types[i] != argType && argType != "unresolved")
+                {
+                    Errors.Add($"Cannot convert type '{argType}' to '{type}'");
+                }
+            }
+            return type;
         }
 
         if (expression.GetType() == typeof(Identifier))
@@ -186,7 +315,7 @@ public class SyntaxChecker
         {
             AddOperatorErrorInfix(@operator, typeL, typeR);
         }
-        return expected[0];
+        return _resultTypes[@operator][0];
     }
 
     private void CheckPostfixType(string @operator, string type)

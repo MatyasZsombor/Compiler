@@ -43,13 +43,21 @@ internal static class Program
 
         Compiler compiler = new Compiler(node);
 
+        if (compiler.Errors.Count != 0)
+        {
+            foreach (string error in compiler.Errors)
+            {
+                Console.WriteLine(error);
+            }
+            return;
+        }
+        
         foreach ((string, string ) instruction in compiler.Instructions)
         {
             Console.WriteLine(instruction.ToString());
         }
-
-        compiler.Instructions.Add(("LDA", "y"));
-        Vm vm = new Vm(compiler.Instructions, compiler.Identifiers);
+        
+        Vm vm = new Vm(compiler.Instructions, compiler.ProgramStart);
         
         Console.WriteLine(vm.Top());
         Console.WriteLine("Finished");

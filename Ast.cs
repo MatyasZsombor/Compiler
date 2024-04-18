@@ -121,7 +121,7 @@ public class PostFixStatement(string @operator, Identifier name = null!, Token t
 
 public class BlockStatement(Token token) : IStatement
 {
-    public Token Token { get; } = token;
+    private Token Token { get; } = token;
     public List<IStatement> Statements { get; } = [];
 
     public string TokenLiteral() => Token.Literal;
@@ -130,7 +130,7 @@ public class BlockStatement(Token token) : IStatement
 
 public class IfStatement(Token token, IExpression? condition, BlockStatement? consequence = null) : IStatement
 {
-    public Token Token { get; } = token;
+    private Token Token { get; } = token;
     public IExpression? Condition { get; } = condition;
     public BlockStatement? Consequence { get; } = consequence;
     public BlockStatement? Alternative { get; set; }
@@ -139,4 +139,55 @@ public class IfStatement(Token token, IExpression? condition, BlockStatement? co
 
     public override string ToString() =>
         "if" + Condition + "{" + Consequence + "}" + (Alternative != null ? " else {" + Alternative + "}": ""); 
+}
+
+public class WhileStatement(Token token, IExpression? condition, BlockStatement? consequence = null) : IStatement
+{
+    private Token Token { get; } = token;
+    public IExpression? Condition { get; } = condition;
+    public BlockStatement? Consequence { get; } = consequence;
+
+    public string TokenLiteral() => Token.Literal;
+
+    public override string ToString() =>
+        "while" + Condition + "{" + Consequence + "}"; 
+}
+
+public class BreakStatement(Token token) : IStatement
+{
+    private Token Token { get; } = token;
+
+    public string TokenLiteral() => Token.Literal;
+
+    public override string ToString() => TokenLiteral() + ";"; 
+}
+
+public class Parameter(Token type, Token name) : IStatement
+{
+    private Token Token { get; } = type;
+    public Token Name { get; } = name;
+
+    public string TokenLiteral() => Token.Literal;
+    public override string ToString() => TokenLiteral() + " " + Name.Literal;
+}
+
+public class FunctionLiteral(Token type, Token name, List<Parameter>? parameters = null, BlockStatement? body = null) : IStatement
+{
+    private Token Token { get; } = type;
+    public Identifier Name { get; } = new(name, name.Literal);
+    public List<Parameter>? Parameters { get; set; } = parameters;
+    public BlockStatement? Body { get; set; } = body;
+ 
+    public string TokenLiteral() => Token.Literal;
+    public override string ToString() => TokenLiteral() + " " + Name + "(" + (Parameters != null ? string.Join(",", Parameters) : "") + ")" + "{" + Body + "}";
+}
+
+public class CallExpression(Token token, Identifier funcName, List<IExpression>? arguments) : IExpression
+{
+    private Token Token { get; } = token;
+    public Identifier FuncName { get; } = funcName;
+    public List<IExpression>? Arguments { get; } = arguments;
+
+    public string TokenLiteral() => Token.Literal;
+    public override string ToString() => FuncName + "(" + (Arguments != null ? string.Join(",", Arguments) : "") + ")";
 }

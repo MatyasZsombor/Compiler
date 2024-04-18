@@ -8,6 +8,7 @@ public enum Precedence
     Sum = 4,
     Product = 5,
     Prefix = 6,
+    Call = 7
 }
 
 public class Parser
@@ -40,6 +41,7 @@ public class Parser
         RegisterInfix(TokenType.NotEq, new InfixExpressionParser(Precedence.Equals));
         RegisterInfix(TokenType.Lt, new InfixExpressionParser(Precedence.Comparison));
         RegisterInfix(TokenType.Gt, new InfixExpressionParser(Precedence.Comparison));
+        RegisterInfix(TokenType.Lparen, new CallExpressionParser(Precedence.Call));
 
         RegisterPostfix(TokenType.PostfixPlus, new PostfixParser());
         RegisterPostfix(TokenType.PostfixMinus, new PostfixParser());
@@ -72,6 +74,10 @@ public class Parser
         switch (_curToken.TokenType)
         {
             case TokenType.Type:
+                if (_peekToken.TokenType == TokenType.Function)
+                {
+                    return ParseFunctionLiteral();
+                }
                 return ParseDeclaration();
             case TokenType.Return:
                 return ParseReturnStatement();
@@ -79,6 +85,13 @@ public class Parser
                 return ParsePostfixStatement();
             case TokenType.If:
                 return ParseIfStatement();
+            case TokenType.While:
+                return ParseWhileStatement();
+            case TokenType.Break:
+                Token tmp = _curToken;
+                return !ExpectPeek(TokenType.Semicolon) ? null : new BreakStatement(tmp);
+            case TokenType.Function:
+                return ParseFunctionLiteral();
             default:
                 Errors.Add( "Only assigment, call, increment and decrement can be used as statement");
                 while (_curToken.TokenType != TokenType.Semicolon)
@@ -92,6 +105,66 @@ public class Parser
                 }
                 return null;
         }
+    }
+
+    private FunctionLiteral? ParseFunctionLiteral()
+    {
+        FunctionLiteral functionLiteral = new FunctionLiteral(_curToken, _peekToken);
+        NextToken();
+
+        if (!ExpectPeek(TokenType.Lparen))
+        {
+            return null;
+        }
+
+        functionLiteral.Parameters = ParseParameters();
+
+        if (!ExpectPeek(TokenType.Lbrace))
+        {
+            return null;
+        }
+
+        functionLiteral.Body = ParseBlockStatement();
+
+        return functionLiteral;
+    }
+
+    private List<Parameter>? ParseParameters()
+    {
+        if (_peekToken.TokenType == TokenType.Rparen)
+        {
+            NextToken();
+            return null;
+        }
+        
+        List<Parameter> parameters = [];
+        
+        if (ExpectPeek(TokenType.Type))
+        {
+            Token type = _curToken;
+            if (ExpectPeek(TokenType.Ident))
+            {
+                parameters.Add(new Parameter(type, _curToken));
+            }
+        }
+
+        while (_peekToken.TokenType == TokenType.Comma)
+        {
+            NextToken();
+
+            if (!ExpectPeek(TokenType.Type))
+            {
+                continue;
+            }
+
+            Token type = _curToken;
+            if (ExpectPeek(TokenType.Ident))
+            {
+                parameters.Add(new Parameter(type, _curToken));
+            }
+        }
+        
+        return !ExpectPeek(TokenType.Rparen) ? null : parameters;
     }
 
     private IStatement? ParsePostfixStatement()
@@ -222,6 +295,45 @@ public class Parser
         }
 
         return ifStatement;
+    }
+    
+    private WhileStatement? ParseWhileStatement()
+    {
+        Token tmp = _curToken;
+        
+        if (!ExpectPeek(TokenType.Lparen))
+        {
+            return null;
+        }
+        
+        if (_peekToken.TokenType == TokenType.Rparen)
+        {
+            AddExpressionError();
+            return null;
+        }
+        
+        NextToken();
+        
+        IExpression? condition = ParseExpression(Precedence.Lowest);
+
+        if (!ExpectPeek(TokenType.Rparen))
+        {
+            return null;
+        }
+        
+        if (!ExpectPeek(TokenType.Lbrace))
+        {
+            return null;
+        }
+
+        if (_peekToken.TokenType != TokenType.Rbrace)
+        {
+            return new WhileStatement(tmp, condition, ParseBlockStatement());
+        }
+
+        NextToken();
+        return new WhileStatement(tmp, condition);
+
     }
 
     private BlockStatement? ParseBlockStatement()
@@ -464,9 +576,9 @@ public class Parser
     private class PostfixParser : IPostfixParser
     {
         public IStatement? Parse(Parser parser, Token token)
-        {
+        { 
             Token tmp = token;
-           return parser.ExpectPeek(TokenType.Semicolon) ? new PostFixStatement(tmp.Literal) : null;
+            return parser.ExpectPeek(TokenType.Semicolon) ? new PostFixStatement(tmp.Literal) : null;
         }
     }
 
@@ -485,6 +597,61 @@ public class Parser
             parser.ExpectPeek(TokenType.Semicolon);
 
             return tmp == null ? null : new AssigmentStatement(tmp);
+        }
+    }
+    
+    private class CallExpressionParser(Precedence precedence) : IInfixParser
+    {
+        public Precedence Precedence { get; } = precedence;
+        public IExpression? Parse(Parser parser, IExpression? function, Token token)
+        {
+            if (function == null)
+            {
+                parser.Errors.Add("Expected expression to be an identifier");
+                return null;
+            }
+
+            if (function.GetType() == typeof(Identifier))
+            {
+                return new CallExpression(parser._curToken, (Identifier) function, ParseCallArguments(parser));
+            }
+
+            parser.Errors.Add($"Expected expression to be an identifier, got instead {function.GetType()}");
+            return null;
+
+        }
+
+        private static List<IExpression>? ParseCallArguments(Parser parser)
+        {
+            if (parser._peekToken.TokenType == TokenType.Rparen)
+            {
+                parser.NextToken();
+
+                return null;
+            }
+
+            parser.NextToken();
+            List<IExpression> arguments = [];
+
+            IExpression? expression = parser.ParseExpression(Precedence.Lowest);
+            if (expression != null)
+            {
+                arguments.Add(expression);
+            }
+
+            while (parser._peekToken.TokenType == TokenType.Comma)
+            {
+                parser.NextToken();
+                parser.NextToken();
+
+                expression = parser.ParseExpression(Precedence.Lowest);
+                if (expression != null)
+                {
+                    arguments.Add(expression);
+                }
+            }
+
+            return !parser.ExpectPeek(TokenType.Rparen) ? null : arguments;
         }
     }
 }

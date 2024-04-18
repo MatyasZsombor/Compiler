@@ -11,6 +11,8 @@ public class Lexer
         {"false", TokenType.False},
         {"if", TokenType.If},
         {"else", TokenType.Else},
+        {"while", TokenType.While},
+        {"break", TokenType.Break},
         {"return", TokenType.Return},
     };
     
@@ -126,20 +128,11 @@ public class Lexer
                 if (char.IsLetter(_cur[0]))
                 {
                     string identifier = ReadIdentifier();
-                    if (_tokCounter > 0 && LexedTokens[_tokCounter - 1].TokenType == TokenType.Apostrophe)
-                    {
-                        return new Token(TokenType.Char, identifier);
-                    }
                     
                     if (_tokCounter <= 0 || LexedTokens[_tokCounter - 1].TokenType != TokenType.Type ||
                         _cur != "(")
                     {
                         return new Token(LookUpIdentifier(identifier), identifier);
-                    }
-
-                    if (!keyWords.TryAdd(identifier, TokenType.Call))
-                    {
-                        Errors.Add("A method with the same signature has already been declared.");
                     }
                     return new Token(TokenType.Function, identifier);
                 }
@@ -192,5 +185,5 @@ public class Lexer
         }
     }
     
-    private static TokenType LookUpIdentifier(string literal) => keyWords.GetValueOrDefault(literal, TokenType.Ident);
+    private TokenType LookUpIdentifier(string literal) => keyWords.GetValueOrDefault(literal, TokenType.Ident);
 }

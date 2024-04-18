@@ -35,6 +35,8 @@ public enum TokenType
     Apostrophe,
     
     Function, 
+    While,
+    Break,
     Call,
     Return,
     If,

@@ -182,4 +182,79 @@ public class ParserTests
             Assert.Equal(test.expected, programNode.ToString());
         }
     }
+
+    [Fact]
+    private void Test8()
+    {
+        List<(string input, string expected)> tests = 
+        [
+            ("while(x == 5){}", "while(x == 5){}"),
+            ("while(x < y){ x++; break; }", "while(x < y){x++;break;}")
+        ];
+
+        foreach (var test in tests)
+        {
+            _lexer = new Lexer(test.input);
+            _parser = new Parser(_lexer.LexedTokens);
+
+            ProgramNode programNode = _parser.ParseProgram();
+            
+            Assert.Empty(_parser.Errors);
+            Assert.Single(programNode.Statements);
+            
+            Assert.Equal(test.expected, programNode.ToString());
+        }
+    }
+
+    [Fact]
+    private void Test9()
+    {
+        List<(string input, string expected)> tests = 
+        [
+            ("int fn(int x, bool y) { int z = x + y; }", "int fn(int x,bool y){int z = (x + y);}"),
+            ("int fn() {}", "int fn(){}"),
+            ("int fn(int x) {}", "int fn(int x){}"),
+            ("int fn(int x, int y, int z) {}", "int fn(int x,int y,int z){}")
+        ];
+
+        foreach (var test in tests)
+        {
+            _lexer = new Lexer(test.input);
+            _parser = new Parser(_lexer.LexedTokens);
+
+            ProgramNode programNode = _parser.ParseProgram();
+            
+            Assert.Empty(_parser.Errors);
+            Assert.Single(programNode.Statements);
+            
+            Assert.Equal(test.expected, programNode.ToString());
+        }
+    }
+    
+    [Fact]
+    private void Test10()
+    {
+        List<(string input, string expected)> tests = 
+        [
+            ("int x = add();", "int x = add();"),
+            ("int x = add(1);", "int x = add(1);"),
+            ("int x = add(1, 2 * 3, 4 + 5);", "int x = add(1,(2 * 3),(4 + 5));"),
+            ("int x = a + add(b * c) + d;", "int x = ((a + add((b * c))) + d);"),
+            ("int x = add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8));", "int x = add(a,b,1,(2 * 3),(4 + 5),add(6,(7 * 8)));"),
+            ("int x = add(a + b + c * d / f + g);", "int x = add((((a + b) + ((c * d) / f)) + g));")
+        ];
+
+        foreach (var test in tests)
+        {
+            _lexer = new Lexer(test.input);
+            _parser = new Parser(_lexer.LexedTokens);
+
+            ProgramNode programNode = _parser.ParseProgram();
+            
+            Assert.Empty(_parser.Errors);
+            Assert.Single(programNode.Statements);
+            
+            Assert.Equal(test.expected, programNode.ToString());
+        }
+    }
 }

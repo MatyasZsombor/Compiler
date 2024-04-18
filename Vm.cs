@@ -8,26 +8,29 @@
 public class Vm
 {
     private readonly byte[] _memory = new byte[0xFFFFFF];
-    private readonly uint[] _stack = new uint[0xFF];
+    private readonly uint[] _stack = new uint[0xFFFF];
     private byte _stackPointer;
-    private readonly Dictionary<string, (string type, uint offset)> _identifiers;
+    private int _programCounter;
 
-    public Vm(List<(string, string)> instructions, Dictionary<string, (string, uint)> identifiers)
+    public Vm(List<(string, string)> instructions, int programCounter)
     {
-        _identifiers = identifiers;
-        string? error = Run(instructions);
-        if (error != null)
+        _programCounter = programCounter;
+        string error = Run(instructions);
+        if (error != "")
         {
             Console.WriteLine(error);
         }
     }
 
-    private string? Run(List<(string, string)> instructions)
+    private string Run(List<(string, string)> instructions)
     {
-        foreach ((string instruction, string operand) in instructions)
+        while(true)
         {
+            (string instruction, string operand) = instructions[_programCounter];
             switch (instruction)
             {
+                case "BRK":
+                    return "";
                 case "PUSH":
                     string? res = Push(uint.Parse(operand));
                     if (res != null) { return res; }
@@ -37,8 +40,22 @@ public class Vm
                 case "DIV":
                 case "SUB":
                 case "CMP":
+                case "LCMP": 
+                case "GCMP":
                     res = ExecuteInfixExpressions(instruction);
                     if (res != null) { return res; }
+                    break;
+                case "RTSV":
+                    uint tmp = Pop();
+                    uint jmp = Pop();
+                    res = Push(tmp);
+                    _programCounter = (int)jmp;
+                    break;
+                case "BRZ":
+                    _programCounter = Pop() == 0 ? int.Parse(operand) : _programCounter;
+                    break;
+                case "BRNZ":
+                    _programCounter = Pop() != 0 ? int.Parse(operand) : _programCounter;
                     break;
                 case "NEG":
                     res = Push(~Pop() + 1);
@@ -49,28 +66,33 @@ public class Vm
                     if (res != null) { return res; }
                     break;
                 case "STA":
-                    (string type, uint offset) = _identifiers[operand];
+                    string[] operands = operand.Split(",");
+                    int offset = int.Parse(operands[0]);
                     uint num = Pop();
-                    switch (type)
+                    switch (operands[1])
                     {
-                        case "int":
+                        case "4":
                             _memory[offset] = (byte)(num & 0b11111111);
                             _memory[offset + 1] = (byte)((num & 0b11111111_00000000) >> 8);
                             _memory[offset + 2] = (byte)((num & 0b11111111_00000000_00000000) >> 16);
                             _memory[offset + 3] = (byte)((num & 0b11111111_00000000_00000000_00000000) >> 24);
                             break;
-                        case "bool":
+                        case "1":
                             _memory[offset] = (byte)num;
                             break;
                     }
                     break;
+                case "JMP":
+                    _programCounter = int.Parse(operand);
+                    continue;
                 case "LDA":
-                    (type, offset) = _identifiers[operand];
-                    num = type switch
+                    operands = operand.Split(","); 
+                    offset = int.Parse(operands[0]);
+                    num = operands[1] switch
                           {
-                              "int" => (uint) (_memory[offset] | (_memory[offset + 1] << 8) |
+                              "4" => (uint) (_memory[offset] | (_memory[offset + 1] << 8) |
                                                (_memory[offset + 2] << 16) | (_memory[offset + 3] << 24)),
-                              "bool" => _memory[offset],
+                              "1" => _memory[offset],
                               _      => 0
                           };
 
@@ -78,8 +100,9 @@ public class Vm
                     if (res != null) { return res; }
                     break;
             }
+
+            _programCounter++;
         }
-        return null;
     }
 
     private string? Push(uint num)
@@ -112,6 +135,12 @@ public class Vm
         {
             case "CMP":
                 res = Push((uint)(num2 == num1 ? 1 : 0));
+                break;
+            case "LCMP":
+                res = Push((uint) (num2 < num1 ? 1 : 0));
+                break;
+            case "GCMP":
+                res = Push((uint) (num2 > num1 ? 1 : 0));
                 break;
             case "ADD":
                 res = Push(num2 + num1);
