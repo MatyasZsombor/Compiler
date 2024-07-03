@@ -1,161 +1,166 @@
 ﻿namespace Compiler;
 
 /*Memory layout
- Static variables 0x0 ... 0xFFF
- Local Scope 0xFFF ... 0xFFFF
- Heap 0xFFFF ... 0xFFFFFF
+    Stack 0x00 .. 0xFF
+    Global Variables 0x100 .. 0xFFF 
+    Heap 0x1000 .. 0xFFFFFF
 */
 public class Vm
 {
-    private readonly byte[] _memory = new byte[0xFFFFFF];
-    private readonly uint[] _stack = new uint[0xFFFF];
-    private byte _stackPointer;
-    private int _programCounter;
+    private readonly int[] _memory = new int[0xFFFFFF];
+    private readonly Dictionary<string, int> _functions;
 
-    public Vm(List<(string, string)> instructions, int programCounter)
+    private readonly Dictionary<string, int> _registers = new()
     {
-        _programCounter = programCounter;
-        string error = Run(instructions);
-        if (error != "")
-        {
-            Console.WriteLine(error);
-        }
+        {"eax", 0},
+        {"ecx", 0},
+        {"ebp", 0xff},
+        {"eip", 0},
+        {"esp", 0xff}
+    };
+
+    public Vm(List<(string, string)> instructions, Dictionary<string, int> functions, int start)
+    {
+        _registers["eip"] = start;
+        _functions = functions;
+        Run(instructions);
+        Console.WriteLine(_registers["eax"]);
     }
 
-    private string Run(List<(string, string)> instructions)
+    private void Run(List<(string, string)> instructions)
     {
-        while(true)
+        while(_registers["eip"] < instructions.Count)
         {
-            (string instruction, string operand) = instructions[_programCounter];
+            (string instruction, string operand) = instructions[_registers["eip"]];
             switch (instruction)
             {
-                case "BRK":
-                    return "";
-                case "PUSH":
-                    string? res = Push(uint.Parse(operand));
-                    if (res != null) { return res; }
-                    break;
-                case "ADD":
-                case "MULT":
-                case "DIV":
-                case "SUB":
-                case "CMP":
-                case "LCMP": 
-                case "GCMP":
-                    res = ExecuteInfixExpressions(instruction);
-                    if (res != null) { return res; }
-                    break;
-                case "RTSV":
-                    uint tmp = Pop();
-                    uint jmp = Pop();
-                    res = Push(tmp);
-                    _programCounter = (int)jmp;
-                    break;
-                case "BRZ":
-                    _programCounter = Pop() == 0 ? int.Parse(operand) : _programCounter;
-                    break;
-                case "BRNZ":
-                    _programCounter = Pop() != 0 ? int.Parse(operand) : _programCounter;
-                    break;
-                case "NEG":
-                    res = Push(~Pop() + 1);
-                    if (res != null) { return res;}
-                    break;
-                case "NOT":
-                    res = Push(Pop() ^ 1);
-                    if (res != null) { return res; }
-                    break;
-                case "STA":
-                    string[] operands = operand.Split(",");
-                    int offset = int.Parse(operands[0]);
-                    uint num = Pop();
-                    switch (operands[1])
+                case "push":
+                    string? res = Push(_registers[operand]);
+                    if (res != null)
                     {
-                        case "4":
-                            _memory[offset] = (byte)(num & 0b11111111);
-                            _memory[offset + 1] = (byte)((num & 0b11111111_00000000) >> 8);
-                            _memory[offset + 2] = (byte)((num & 0b11111111_00000000_00000000) >> 16);
-                            _memory[offset + 3] = (byte)((num & 0b11111111_00000000_00000000_00000000) >> 24);
-                            break;
-                        case "1":
-                            _memory[offset] = (byte)num;
-                            break;
+                        Console.WriteLine(res);
                     }
                     break;
-                case "JMP":
-                    _programCounter = int.Parse(operand);
-                    continue;
-                case "LDA":
-                    operands = operand.Split(","); 
-                    offset = int.Parse(operands[0]);
-                    num = operands[1] switch
-                          {
-                              "4" => (uint) (_memory[offset] | (_memory[offset + 1] << 8) |
-                                               (_memory[offset + 2] << 16) | (_memory[offset + 3] << 24)),
-                              "1" => _memory[offset],
-                              _      => 0
-                          };
-
-                    res = Push(num);
-                    if (res != null) { return res; }
+                case "pop":
+                    _registers[operand] = Pop();
+                    break;
+                case "call":
+                    Push(_registers["eip"] + 1);
+                    _registers["eip"] = _functions[operand] - 1;
+                    Push(_registers["ebp"]);
+                    _registers["ebp"] = _registers["esp"];
+                    break;
+                case "mov":
+                    string[] operands = operand.Split(",");
+                    _registers[operands[1]] = int.Parse(operands[0]);
+                    break;
+                case "sta":
+                    _memory[int.Parse(operand)] = _registers["eax"];
+                    break;
+                case "neg":
+                    _registers["eax"] = ~_registers["eax"] + 1;
+                    break;
+                case "ret":
+                    _registers["esp"] = _registers["ebp"];
+                    _registers["ebp"] = Pop();
+                    _registers["eip"] = Pop() - 1;
+                    break;
+                case "not":
+                    _registers["eax"] = _registers["eax"] == 0 ? 1 : 0; 
+                    break;
+                case "lda":
+                    _registers["eax"] = _memory[GetAddress(operand)];
+                    break;
+                case "add":
+                case "sub":
+                case "mul":
+                case "div":
+                case "cmp":
+                case  "lcmp":
+                case  "gcmp":
+                    operands = operand.Split(",");
+                    res = ExecuteInfixExpressions(instruction, operands[0], operands[1]);
+                    if (res != null)
+                    {
+                        Console.WriteLine(res);
+                    }
+                    break;
+                default:
+                    Console.WriteLine("Unimplemented instruction");
                     break;
             }
 
-            _programCounter++;
+            _registers["eip"]++;
         }
     }
 
-    private string? Push(uint num)
+    private string? Push(int num)
     {
-        if (_stackPointer == _stack.Length)
+        if (_registers["esp"] == 0)
         {
             return "Stack overflow occured";
         }
-        _stack[_stackPointer] = num;
-        _stackPointer++;
+        _memory[_registers["esp"]] = num;
+        _registers["esp"]--;
 
         return null;
     }
     
-    private uint Pop()
+    private int Pop()
     {
-        _stackPointer--;
-        uint tmp = _stack[_stackPointer];
-        _stack[_stackPointer] = 0;
+        _registers["esp"]++;
+        int tmp = _memory[_registers["esp"]];
         return tmp;
     }
 
-    private string? ExecuteInfixExpressions(string @operator)
+    private int GetAddress(string address)
     {
-        uint num1 = Pop();
-        uint num2 = Pop();
-        
-        string? res;
+        string[] tmp;
+        if (address.Contains('-'))
+        {
+            tmp = address.Split('-');
+            return _registers[tmp[0]] - int.Parse(tmp[1]);
+        } 
+        tmp = address.Split('+');
+        return _registers[tmp[0]] + int.Parse(tmp[1]); 
+    }
+
+    private string? ExecuteInfixExpressions(string @operator, string source, string destination)
+    {
+        int left = _registers[source];
+        int right = _registers[destination];
+
+        int res;
         switch (@operator)
         {
-            case "CMP":
-                res = Push((uint)(num2 == num1 ? 1 : 0));
+            case "cmp":
+                res = left == right ? 1 : 0;
                 break;
-            case "LCMP":
-                res = Push((uint) (num2 < num1 ? 1 : 0));
+            case "lcmp":
+                res = left < right ? 1 : 0;
                 break;
-            case "GCMP":
-                res = Push((uint) (num2 > num1 ? 1 : 0));
+            case "gcmp":
+                res = left > right ? 1 : 0;
                 break;
-            case "ADD":
-                res = Push(num2 + num1);
+            case "add":
+                res = left + right;
                 break;
-            case "MULT":
-                res = Push(num2 * num1);
+            case "sub":
+                res = left - right;
                 break;
-            case "DIV":
-                res = Push(num2 / num1);
+            case "mul":
+                res = left * right;
+                break;
+            case "div":
+                res = left / right;
                 break;
             default:
                 return $"'{@operator}' isn't implemented";
         }
-        return res;
+
+        _registers[destination] = res;
+        return null;
     }
 
-    public uint Top() => _stack[0];
+    public int Top() => _memory[0xff];
 }

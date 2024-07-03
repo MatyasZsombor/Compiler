@@ -44,6 +44,11 @@ public class SyntaxChecker
         {
             CheckSyntax(statement, null);
         }
+
+        if (!_functions.ContainsKey("main"))
+        {
+            Errors.Add("Couldn't find suitable entry point. ");
+        }
     }
     
     private void CheckSyntax(IStatement statement, Dictionary<string, string>? bindings)
@@ -249,11 +254,11 @@ public class SyntaxChecker
             (string type, string returnTypes) = _functions[callExpression.FuncName.TokenLiteral()];
             string[] types = returnTypes.Split(",");
 
-            if (callExpression.Arguments == null && types.Length == 0)
+            if (callExpression.Arguments == null && types is [""])
             {
                 return type;
             }
-            if(callExpression.Arguments == null && types.Length != 0)
+            if(callExpression.Arguments == null)
             {
                 Errors.Add($"Function '{callExpression.FuncName}' has {types.Length} parameter(s) but is invoked with 0 argument(s)");
                 return type;

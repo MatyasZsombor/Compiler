@@ -37,7 +37,6 @@ public enum TokenType
     Function, 
     While,
     Break,
-    Call,
     Return,
     If,
     Else,

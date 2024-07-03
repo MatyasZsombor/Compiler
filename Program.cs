@@ -12,7 +12,8 @@ internal static class Program
 
         if (!File.Exists(args[0]))
         {
-          Console.WriteLine("The file doesn't exists.");   
+          Console.WriteLine("The file doesn't exists.");
+          return;
         }
         
         string[] lines = File.ReadAllLines(args[0]);
@@ -57,9 +58,8 @@ internal static class Program
             Console.WriteLine(instruction.ToString());
         }
         
-        Vm vm = new Vm(compiler.Instructions, compiler.ProgramStart);
+        Vm unused = new Vm(compiler.Instructions, compiler.Functions, compiler.FunctionOffset);
         
-        Console.WriteLine(vm.Top());
         Console.WriteLine("Finished");
     }
 }
