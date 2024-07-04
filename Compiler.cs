@@ -110,12 +110,18 @@ public class Compiler
                 Instructions.Add(("jne", ""));
 
                 int beforeCount = Instructions.Count - 1;
+                int scopeBefore = locals?.Count ?? 0;
                 if (ifStatement.Consequence != null)
                 {
                     Compile(ifStatement.Consequence, locals);
                 }
-
+                
                 Instructions[beforeCount] = ("jne", (Instructions.Count - 1).ToString());
+                for (int i = 0; i < ((locals?.Count ?? 0) - scopeBefore); i++)
+                {
+                    Instructions.Add(("pop", ""));
+                }
+                
                 break; 
             
             case CallExpression callExpression:

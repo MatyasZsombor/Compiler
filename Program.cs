@@ -31,7 +31,7 @@ internal static class Program
             return;
         }
 
-        SyntaxChecker syntaxChecker = new SyntaxChecker(node.Statements);
+        /*SyntaxChecker syntaxChecker = new SyntaxChecker(node.Statements);
 
         if (syntaxChecker.Errors.Count != 0)
         {
@@ -40,7 +40,7 @@ internal static class Program
                 Console.WriteLine(error);
             }
             return;
-        }
+        }*/
 
         Compiler compiler = new Compiler(node);
 
