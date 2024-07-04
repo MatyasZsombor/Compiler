@@ -16,7 +16,8 @@ public class Vm
         {"ecx", 0},
         {"ebp", 0xff},
         {"eip", 0},
-        {"esp", 0xff}
+        {"esp", 0xff},
+        {"status", 0}
     };
 
     public Vm(List<(string, string)> instructions, Dictionary<string, int> functions, int start)
@@ -42,10 +43,15 @@ public class Vm
                     }
                     break;
                 case "pop":
-                    _registers[operand] = Pop();
+                    if (operand != "")
+                    {
+                        _registers[operand] = Pop();
+                        break;
+                    }
+                    Pop();
                     break;
                 case "call":
-                    Push(_registers["eip"] + 1);
+                    Push(_registers["eip"]);
                     _registers["eip"] = _functions[operand] - 1;
                     Push(_registers["ebp"]);
                     _registers["ebp"] = _registers["esp"];
@@ -63,7 +69,10 @@ public class Vm
                 case "ret":
                     _registers["esp"] = _registers["ebp"];
                     _registers["ebp"] = Pop();
-                    _registers["eip"] = Pop() - 1;
+                    _registers["eip"] = Pop();
+                    break;
+                case "jne":
+                    _registers["eip"] = _registers["status"] == 1 ? _registers["eip"] : int.Parse(operand);
                     break;
                 case "not":
                     _registers["eax"] = _registers["eax"] == 0 ? 1 : 0; 
@@ -110,6 +119,7 @@ public class Vm
     {
         _registers["esp"]++;
         int tmp = _memory[_registers["esp"]];
+        _memory[_registers["esp"]] = 0;
         return tmp;
     }
 
@@ -135,12 +145,15 @@ public class Vm
         {
             case "cmp":
                 res = left == right ? 1 : 0;
+                _registers["status"] = res;
                 break;
             case "lcmp":
                 res = left < right ? 1 : 0;
+                _registers["status"] = res;
                 break;
             case "gcmp":
                 res = left > right ? 1 : 0;
+                _registers["status"] = res;
                 break;
             case "add":
                 res = left + right;

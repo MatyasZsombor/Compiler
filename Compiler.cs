@@ -43,11 +43,8 @@ public class Compiler
             {
                 continue;
             }
-            
-            foreach (IStatement statement in function.Body.Statements)
-            {
-                Compile(statement, locals);
-            }
+
+            Compile(function.Body, locals);
             FunctionOffset = Instructions.Count;
         }
     }
@@ -56,6 +53,13 @@ public class Compiler
     {
         switch (node)
         {
+            case BlockStatement blockStatement:
+                foreach (IStatement statement in blockStatement.Statements)
+                {
+                    Compile(statement, locals);
+                }
+                break;
+            
             case DeclarationStatement declarationStatement:
                 Compile(declarationStatement.Value, locals);
                 if (locals == null)
@@ -101,6 +105,19 @@ public class Compiler
                 Instructions.Add(("ret", ""));
                 break;
             
+            case IfStatement ifStatement:
+                Compile(ifStatement.Condition!, locals);
+                Instructions.Add(("jne", ""));
+
+                int beforeCount = Instructions.Count - 1;
+                if (ifStatement.Consequence != null)
+                {
+                    Compile(ifStatement.Consequence, locals);
+                }
+
+                Instructions[beforeCount] = ("jne", (Instructions.Count - 1).ToString());
+                break; 
+            
             case CallExpression callExpression:
                 if (callExpression.Arguments != null)
                 {
@@ -111,7 +128,13 @@ public class Compiler
                     }
                 }
                 Instructions.Add(("call", callExpression.FuncName.Value));
+
+                for (int i = 0; i < (callExpression.Arguments?.Count ?? 0); i++)
+                {
+                    Instructions.Add(("pop", ""));
+                }
                 break;
+            
             default:
                 Console.WriteLine(node.GetType());
                 break;
